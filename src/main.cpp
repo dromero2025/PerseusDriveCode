@@ -15,6 +15,33 @@ using namespace vex;
 competition Competition;
 
 // define your global instances of motors and other devices here
+brain Brain;
+controller Controller = controller();
+
+//drivetrain initializations
+/*motor fLMotor = motor(PORT1, ratio36_1);//front left drive motor
+motor fRMotor = motor(PORT3, ratio36_1);//front right drive motor
+motor rLMotor = motor(PORT2, ratio36_1);//rear left drive motor
+motor rRMotor = motor(PORT4, ratio36_1);//rear right drive motor
+
+inertial inert = inertial(PORT5);
+
+motor_group leftDrive = motor_group(fLMotor, rLMotor);
+motor_group rightDrive = motor_group(fRMotor, rRMotor);
+*/
+//intake intializations
+motor hIntMotor = motor(PORT15, ratio18_1);
+motor lIntMotor = motor(PORT14, ratio18_1);
+
+motor_group intake = (hIntMotor, lIntMotor);
+
+//smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert);
+//clamp initializations
+
+
+//climb initializations
+
+
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -65,10 +92,12 @@ void usercontrol(void) {
     // Each time through the loop your program should update motor + servo
     // values based on feedback from the joysticks.
 
-    // ........................................................................
-    // Insert user code here. This is where you use the joystick values to
-    // update your motors, etc.
-    // ........................................................................
+    leftDrive.spin(directionType::fwd, Controller.Axis3.value() + Controller.Axis1.value(), velocityUnits::pct);
+    rightDrive.spin(directionType::fwd, Controller.Axis3.value() - Controller.Axis1.value(), velocityUnits::pct);
+
+    while(Controller.ButtonL1.pressing()){
+      intake.spin(directionType::fwd, 100, velocityUnits::pct);
+    }
 
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
