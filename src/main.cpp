@@ -29,7 +29,7 @@ inertial inert = inertial(PORT5);
 motor_group leftDrive = motor_group(fLMotor, rLMotor);
 motor_group rightDrive = motor_group(fRMotor, rRMotor);
 
-//smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert);
+smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert, 12.57, 10.625, 9.5, inches, 2);
 
 //intake intializations
 motor hIntMotor = motor(PORT15, ratio18_1, false);
@@ -92,9 +92,7 @@ void pre_auton(void) {
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void) {
-  // ..........................................................................
-  // Insert autonomous user code here.
-  // ..........................................................................
+  
 }
 
 /*---------------------------------------------------------------------------*/
@@ -122,18 +120,6 @@ void usercontrol(void) {
     //outtake press
     Controller.ButtonDown.pressed(intakeSpinAga);
     Controller.ButtonDown.released(intakeStop);
-
-    /*
-    //Code that runs intake correctly, but drive and intake coudln't run simultaneously
-    while(Controller.ButtonL1.pressing()){
-      intake.spin(directionType::fwd, 100, velocityUnits::pct);
-    }
-    intake.stop();
-    while(Controller.ButtonL2.pressing()){
-      intake.spin(directionType::rev, 100, velocityUnits::pct);
-    }
-    intake.stop();
-    */
 
    //clamp code
     Controller.ButtonR1.pressed(clamped);
