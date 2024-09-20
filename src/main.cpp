@@ -19,25 +19,44 @@ brain Brain;
 controller Controller = controller();
 
 //drivetrain initializations
-/*motor fLMotor = motor(PORT1, ratio36_1);//front left drive motor
-motor fRMotor = motor(PORT3, ratio36_1);//front right drive motor
-motor rLMotor = motor(PORT2, ratio36_1);//rear left drive motor
-motor rRMotor = motor(PORT4, ratio36_1);//rear right drive motor
+motor fLMotor = motor(PORT1, ratio36_1, false);//front left drive motor
+motor fRMotor = motor(PORT3, ratio36_1, true);//front right drive motor
+motor rLMotor = motor(PORT2, ratio36_1, false);//rear left drive motor
+motor rRMotor = motor(PORT4, ratio36_1, true);//rear right drive motor
 
 inertial inert = inertial(PORT5);
 
 motor_group leftDrive = motor_group(fLMotor, rLMotor);
 motor_group rightDrive = motor_group(fRMotor, rRMotor);
-*/
-//intake intializations
-motor hIntMotor = motor(PORT15, ratio18_1);
-motor lIntMotor = motor(PORT14, ratio18_1);
-
-motor_group intake = (hIntMotor, lIntMotor);
 
 //smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert);
+
+//intake intializations
+motor hIntMotor = motor(PORT15, ratio18_1, false);
+motor lIntMotor = motor(PORT14, ratio18_1, false);
+
+motor_group intake = motor_group(hIntMotor, lIntMotor);
+
+void intakeSpinFor(){
+  intake.spin(directionType::fwd, 100, velocityUnits::pct);
+}
+void intakeSpinAga(){
+  intake.spin(directionType::rev, 100, velocityUnits::pct);
+}
+void intakeStop(){
+  intake.stop();
+}
+
+
 //clamp initializations
 
+digital_out mogoClamp = digital_out(Brain.ThreeWirePort.A);
+bool mogoCont = false;
+
+void clamped(){
+  mogoCont != mogoCont;
+  mogoClamp.set(mogoCont);
+}
 
 //climb initializations
 
@@ -57,6 +76,9 @@ void pre_auton(void) {
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
+
+  mogoClamp.set(mogoCont);
+
 }
 
 /*---------------------------------------------------------------------------*/
@@ -88,16 +110,33 @@ void autonomous(void) {
 void usercontrol(void) {
   // User control code here, inside the loop
   while (1) {
-    // This is the main execution loop for the user control program.
-    // Each time through the loop your program should update motor + servo
-    // values based on feedback from the joysticks.
 
-    //leftDrive.spin(directionType::fwd, Controller.Axis3.value() + Controller.Axis1.value(), velocityUnits::pct);
-    //rightDrive.spin(directionType::fwd, Controller.Axis3.value() - Controller.Axis1.value(), velocityUnits::pct);
+  //drivetrain code
+    leftDrive.spin(directionType::fwd, Controller.Axis3.value() + Controller.Axis1.value(), velocityUnits::pct);
+    rightDrive.spin(directionType::fwd, Controller.Axis3.value() - Controller.Axis1.value(), velocityUnits::pct);
+    
+  //intake code 
+    //intake press
+    Controller.ButtonL1.pressed(intakeSpinFor);
+    Controller.ButtonL1.released(intakeStop);
+    //outtake press
+    Controller.ButtonDown.pressed(intakeSpinAga);
+    Controller.ButtonDown.released(intakeStop);
 
+    /*
+    //Code that runs intake correctly, but drive and intake coudln't run simultaneously
     while(Controller.ButtonL1.pressing()){
       intake.spin(directionType::fwd, 100, velocityUnits::pct);
     }
+    intake.stop();
+    while(Controller.ButtonL2.pressing()){
+      intake.spin(directionType::rev, 100, velocityUnits::pct);
+    }
+    intake.stop();
+    */
+
+   //clamp code
+    Controller.ButtonR1.pressed(clamped);
 
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
