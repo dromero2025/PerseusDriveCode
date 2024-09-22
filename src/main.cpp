@@ -37,6 +37,8 @@ motor lIntMotor = motor(PORT14, ratio18_1, false);
 
 motor_group intake = motor_group(hIntMotor, lIntMotor);
 
+vision chucker = vision(PORT16);
+
 void intakeSpinFor(){
   intake.spin(directionType::fwd, 100, velocityUnits::pct);
 }
@@ -47,6 +49,16 @@ void intakeStop(){
   intake.stop();
 }
 
+//intake redirect intitializations 
+digital_out redirect = digital_out(Brain.ThreeWirePort.B);
+bool rediCont = false;
+
+distance wallSense = distance(PORT17);
+
+void redirectStake(){
+  rediCont != rediCont;
+  redirect.set(rediCont);
+}
 
 //clamp initializations
 
@@ -59,8 +71,13 @@ void clamped(){
 }
 
 //climb initializations
+motor climb1 = motor(PORT11, ratio6_1, true);
+motor climb2 = motor(PORT12, ratio6_1, false);
 
+distance groundSense = distance(PORT13);
 
+//nonspecific sensor initializations
+aivision collinsBetterEye = aivision(PORT21);
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
