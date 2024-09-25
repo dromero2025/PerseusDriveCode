@@ -19,21 +19,21 @@ brain Brain;
 controller Controller = controller();
 
 //drivetrain initializations
-motor fLMotor = motor(PORT1, ratio36_1, false);//front left drive motor
-motor fRMotor = motor(PORT3, ratio36_1, true);//front right drive motor
-motor rLMotor = motor(PORT2, ratio36_1, false);//rear left drive motor
-motor rRMotor = motor(PORT4, ratio36_1, true);//rear right drive motor
+motor fLMotor = motor(PORT12, ratio36_1, true);//front left drive motor
+motor fRMotor = motor(PORT19, ratio36_1, true);//front right drive motor
+motor rLMotor = motor(PORT13, ratio36_1, false);//rear left drive motor
+motor rRMotor = motor(PORT20, ratio36_1, true);//rear right drive motor
 
 inertial inert = inertial(PORT5);
 
 motor_group leftDrive = motor_group(fLMotor, rLMotor);
 motor_group rightDrive = motor_group(fRMotor, rRMotor);
 
-smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert, 12.57, 10.625, 9.5, inches, 2);
+//smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert, 12.57, 10.625, 9.5, inches, 2);
 
 //intake intializations
-motor hIntMotor = motor(PORT15, ratio18_1, false);
-motor lIntMotor = motor(PORT14, ratio18_1, false);
+motor hIntMotor = motor(PORT10, ratio18_1, false);
+motor lIntMotor = motor(PORT9, ratio18_1, false);
 
 motor_group intake = motor_group(hIntMotor, lIntMotor);
 
@@ -50,6 +50,7 @@ void intakeStop(){
 }
 
 //intake redirect intitializations 
+/*
 digital_out redirect = digital_out(Brain.ThreeWirePort.B);
 bool rediCont = false;
 
@@ -59,15 +60,19 @@ void redirectStake(){
   rediCont != rediCont;
   redirect.set(rediCont);
 }
-
+*/
 //clamp initializations
 
 digital_out mogoClamp = digital_out(Brain.ThreeWirePort.A);
-bool mogoCont = false;
+int numClamps = 0;
 
 void clamped(){
-  mogoCont != mogoCont;
-  mogoClamp.set(mogoCont);
+  if(numClamps % 2 == 1){
+    mogoClamp.set(false);
+  } else {
+    mogoClamp.set(true);
+  }
+  numClamps++;
 }
 
 //climb initializations
@@ -94,7 +99,7 @@ void pre_auton(void) {
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
 
-  mogoClamp.set(mogoCont);
+  mogoClamp.set(false);
 
 }
 
