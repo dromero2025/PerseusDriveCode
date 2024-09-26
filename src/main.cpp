@@ -61,18 +61,15 @@ void redirectStake(){
   redirect.set(rediCont);
 }
 */
-//clamp initializations
 
+
+//clamp initializations
+bool clamp = false;
 digital_out mogoClamp = digital_out(Brain.ThreeWirePort.A);
-int numClamps = 0;
 
 void clamped(){
-  if(numClamps % 2 == 1){
-    mogoClamp.set(false);
-  } else {
-    mogoClamp.set(true);
-  }
-  numClamps++;
+  mogoClamp.set(!clamp);
+  clamp = !clamp;
 }
 
 //climb initializations
@@ -143,7 +140,7 @@ void usercontrol(void) {
     Controller.ButtonDown.pressed(intakeSpinAga);
     Controller.ButtonDown.released(intakeStop);
 
-   //clamp code
+    //clamp code
     Controller.ButtonR1.pressed(clamped);
 
     wait(20, msec); // Sleep the task for a short amount of time to
