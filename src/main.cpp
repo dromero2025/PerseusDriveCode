@@ -24,7 +24,7 @@ motor fRMotor = motor(PORT19, ratio36_1, true);//front right drive motor
 motor rLMotor = motor(PORT13, ratio36_1, false);//rear left drive motor
 motor rRMotor = motor(PORT20, ratio36_1, true);//rear right drive motor
 
-inertial inert = inertial(PORT5);
+inertial inert = inertial(PORT1);
 
 motor_group leftDrive = motor_group(fLMotor, rLMotor);
 motor_group rightDrive = motor_group(fRMotor, rRMotor);
@@ -37,7 +37,13 @@ motor lIntMotor = motor(PORT9, ratio18_1, false);
 
 motor_group intake = motor_group(hIntMotor, lIntMotor);
 
-vision chucker = vision(PORT16);
+optical chucker = optical(PORT8);
+
+//sensor intializations
+distance front = distance(PORT4);
+distance back = distance(PORT3);
+vision backupCam = vision(PORT2);
+aivision frontCam = aivision(PORT5);
 
 void intakeSpinFor(){
   intake.spin(directionType::fwd, 100, velocityUnits::pct);
@@ -50,26 +56,42 @@ void intakeStop(){
 }
 
 //intake redirect intitializations 
-/*
-digital_out redirect = digital_out(Brain.ThreeWirePort.B);
-bool rediCont = false;
+//clamp initializations
+bool redi = false;
+bool R2down = false;
+pneumatics redirect = pneumatics(Brain.ThreeWirePort.A);
 
-distance wallSense = distance(PORT17);
-
-void redirectStake(){
-  rediCont != rediCont;
-  redirect.set(rediCont);
+void redirected(){
+  //mogoClamp.set(true);
+  
+  if(R2down == false){
+    redirect.set(redi);
+    redi = !redi;
+  }
+  R2down = true;
 }
-*/
+void R2released(){
+  R2down = false;
+}
+
 
 
 //clamp initializations
 bool clamp = false;
-digital_out mogoClamp = digital_out(Brain.ThreeWirePort.A);
+bool R1down = false;
+pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.B);
 
 void clamped(){
-  mogoClamp.set(!clamp);
-  clamp = !clamp;
+  //mogoClamp.set(true);
+  
+  if(R1down == false){
+    mogoClamp.set(clamp);
+    clamp = !clamp;
+  }
+  R1down = true;
+}
+void R1released(){
+  R1down = false;
 }
 
 //climb initializations
@@ -96,7 +118,7 @@ void pre_auton(void) {
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
 
-  mogoClamp.set(false);
+  
 
 }
 
@@ -142,6 +164,10 @@ void usercontrol(void) {
 
     //clamp code
     Controller.ButtonR1.pressed(clamped);
+    Controller.ButtonR1.released(R1released);
+    //redirect code
+    Controller.ButtonR2.pressed(redirected);
+    Controller.ButtonR2.released(R2released);
 
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
