@@ -56,24 +56,26 @@ void intakeStop(){
 }
 
 //intake redirect intitializations 
-//clamp initializations
-bool redi = false;
-bool R2down = false;
-pneumatics redirect = pneumatics(Brain.ThreeWirePort.A);
 
-void redirected(){
-  //mogoClamp.set(true);
+motor liftLeft = motor(PORT6, ratio18_1, true);
+motor liftRight = motor(PORT7, ratio18_1, false);
+motor_group lift = motor_group(liftLeft, liftRight);
+void intakeLift(){
+  lift.spin(directionType::fwd, 50, velocityUnits::pct);
   
-  if(R2down == false){
-    redirect.set(redi);
-    redi = !redi;
-  }
-  R2down = true;
 }
-void R2released(){
-  R2down = false;
+void intakeDown(){
+  lift.spin(directionType::rev, 50, velocityUnits::pct);
+  
 }
-
+void intakeLiftStop(){
+  lift.setStopping(brakeType::hold);
+  lift.stop();
+}
+void intakeLiftRelease(){
+  lift.setStopping(brakeType::coast);
+  lift.stop();
+}
 
 
 //clamp initializations
@@ -163,11 +165,13 @@ void usercontrol(void) {
     Controller.ButtonDown.released(intakeStop);
 
     //clamp code
-    Controller.ButtonR1.pressed(clamped);
-    Controller.ButtonR1.released(R1released);
+    Controller.ButtonL2.pressed(clamped);
+    Controller.ButtonL2.released(R1released);
     //redirect code
-    Controller.ButtonR2.pressed(redirected);
-    Controller.ButtonR2.released(R2released);
+    Controller.ButtonR1.pressed(intakeLift);
+    Controller.ButtonR1.released(intakeLiftStop);
+    Controller.ButtonR2.pressed(intakeDown);
+    Controller.ButtonR2.released(intakeLiftRelease);
 
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
