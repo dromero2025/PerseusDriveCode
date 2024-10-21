@@ -19,12 +19,12 @@ brain Brain;
 controller Controller = controller();
 
 //drivetrain initializations
-motor fLMotor = motor(PORT12, ratio36_1, true);//front left drive motor
-motor fRMotor = motor(PORT19, ratio36_1, true);//front right drive motor
-motor rLMotor = motor(PORT13, ratio36_1, false);//rear left drive motor
-motor rRMotor = motor(PORT20, ratio36_1, true);//rear right drive motor
+motor fLMotor = motor(PORT18, ratio36_1, false);//front left drive motor
+motor fRMotor = motor(PORT13, ratio36_1, true);//front right drive motor
+motor rLMotor = motor(PORT19, ratio36_1, false);//rear left drive motor
+motor rRMotor = motor(PORT14, ratio36_1, true);//rear right drive motor
 
-inertial inert = inertial(PORT1);
+inertial inert = inertial(PORT5);
 
 motor_group leftDrive = motor_group(fLMotor, rLMotor);
 motor_group rightDrive = motor_group(fRMotor, rRMotor);
@@ -32,19 +32,51 @@ motor_group rightDrive = motor_group(fRMotor, rRMotor);
 //smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert, 12.57, 10.625, 9.5, inches, 2);
 
 //intake intializations
-motor hIntMotor = motor(PORT10, ratio18_1, false);
-motor lIntMotor = motor(PORT9, ratio18_1, false);
+motor hIntMotor = motor(PORT11, ratio18_1, true);
+motor lIntMotor = motor(PORT20, ratio18_1, true);
+double intakeRot = 0.0;
 
 motor_group intake = motor_group(hIntMotor, lIntMotor);
 
 optical chucker = optical(PORT8);
+double redLow = 10.0;
+double redHigh = 25.0;
 
 //sensor intializations
-distance front = distance(PORT4);
-distance back = distance(PORT3);
-vision backupCam = vision(PORT2);
-aivision frontCam = aivision(PORT5);
+distance front = distance(PORT5);
+//distance back = distance(PORT3);
+aivision backupCam = aivision(PORT4);
 
+//intake redirect intitializations
+motor liftLeft = motor(PORT2, ratio18_1, true);
+motor liftRight = motor(PORT2, ratio18_1, false);
+motor_group lift = (liftLeft, liftRight);
+
+//clamp initializations
+bool clamp = false;
+bool R1down = false;
+pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
+
+//climb initializations
+motor climb1 = motor(PORT11, ratio6_1, true);
+motor climb2 = motor(PORT12, ratio6_1, false);
+
+distance groundSense = distance(PORT13);
+
+
+
+//methods
+void chuck(){
+  if(chucker.hue() >= redLow || chucker.hue() <= redHigh){
+    Brain.Screen.clearLine();
+    Brain.Screen.print("Red Detected");
+    intake.spin(directionType::rev, 100, velocityUnits::pct);
+  } else if(chucker.hue() < redLow || chucker.hue() > redHigh){
+
+  }
+}
+
+  //intake methods
 void intakeSpinFor(){
   intake.spin(directionType::fwd, 100, velocityUnits::pct);
 }
@@ -54,35 +86,7 @@ void intakeSpinAga(){
 void intakeStop(){
   intake.stop();
 }
-
-//intake redirect intitializations 
-
-motor liftLeft = motor(PORT6, ratio18_1, true);
-motor liftRight = motor(PORT7, ratio18_1, false);
-motor_group lift = motor_group(liftLeft, liftRight);
-void intakeLift(){
-  lift.spin(directionType::fwd, 50, velocityUnits::pct);
-  
-}
-void intakeDown(){
-  lift.spin(directionType::rev, 50, velocityUnits::pct);
-  
-}
-void intakeLiftStop(){
-  lift.setStopping(brakeType::hold);
-  lift.stop();
-}
-void intakeLiftRelease(){
-  lift.setStopping(brakeType::coast);
-  lift.stop();
-}
-
-
-//clamp initializations
-bool clamp = false;
-bool R1down = false;
-pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.B);
-
+  //clamp methods
 void clamped(){
   //mogoClamp.set(true);
   
@@ -92,18 +96,26 @@ void clamped(){
   }
   R1down = true;
 }
-void R1released(){
+void unclamped(){
   R1down = false;
 }
 
-//climb initializations
-motor climb1 = motor(PORT11, ratio6_1, true);
-motor climb2 = motor(PORT12, ratio6_1, false);
+  //redirect methods
+void intakeLift(){
+  lift.spin(directionType::fwd, 100, velocityUnits::pct);
+}
+void intakeLiftBack(){
+  lift.spin(directionType::rev, 100, velocityUnits::pct);
+}
+void intakeDownOne(){
+  lift.setStopping(hold);
+  lift.stop();
+}
+void intakeDownTwo(){
+  lift.setStopping(coast);
+  lift.stop();
+}
 
-distance groundSense = distance(PORT13);
-
-//nonspecific sensor initializations
-aivision collinsBetterEye = aivision(PORT21);
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -119,7 +131,8 @@ void pre_auton(void) {
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
-
+  chucker.setLight(ledState::on);
+  chucker.setLightPower(75, percentUnits::pct);
   
 
 }
@@ -160,18 +173,19 @@ void usercontrol(void) {
     //intake press
     Controller.ButtonL1.pressed(intakeSpinFor);
     Controller.ButtonL1.released(intakeStop);
+    chucker.objectDetected(chuck);
     //outtake press
     Controller.ButtonDown.pressed(intakeSpinAga);
     Controller.ButtonDown.released(intakeStop);
 
     //clamp code
     Controller.ButtonL2.pressed(clamped);
-    Controller.ButtonL2.released(R1released);
+    Controller.ButtonL2.released(unclamped);
     //redirect code
     Controller.ButtonR1.pressed(intakeLift);
-    Controller.ButtonR1.released(intakeLiftStop);
-    Controller.ButtonR2.pressed(intakeDown);
-    Controller.ButtonR2.released(intakeLiftRelease);
+    Controller.ButtonR2.pressed(intakeLiftBack);
+    Controller.ButtonR1.released(intakeDownOne);
+    Controller.ButtonR2.released(intakeDownTwo);
 
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
