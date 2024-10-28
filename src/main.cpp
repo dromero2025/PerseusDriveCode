@@ -96,11 +96,11 @@ void intakeDownTwo(){
 }
 
 //auton methods
-void redDetect(){
+/* void redDetect(){
   if(){
 
   }
-}
+} */
 
 
 
