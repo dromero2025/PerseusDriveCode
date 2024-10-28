@@ -34,22 +34,17 @@ motor_group rightDrive = motor_group(fRMotor, rRMotor);
 //intake intializations
 motor hIntMotor = motor(PORT11, ratio18_1, true);
 motor lIntMotor = motor(PORT20, ratio18_1, true);
-double intakeRot = 0.0;
 
 motor_group intake = motor_group(hIntMotor, lIntMotor);
 
-optical chucker = optical(PORT8);
-double redLow = 10.0;
-double redHigh = 25.0;
-
 //sensor intializations
-distance front = distance(PORT5);
+aivision windshield = aivision(PORT5);
 //distance back = distance(PORT3);
 aivision backupCam = aivision(PORT4);
 
 //intake redirect intitializations
 motor liftLeft = motor(PORT2, ratio18_1, true);
-motor liftRight = motor(PORT2, ratio18_1, false);
+motor liftRight = motor(PORT9, ratio18_1, false);
 motor_group lift = (liftLeft, liftRight);
 
 //clamp initializations
@@ -57,24 +52,7 @@ bool clamp = false;
 bool R1down = false;
 pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
 
-//climb initializations
-motor climb1 = motor(PORT11, ratio6_1, true);
-motor climb2 = motor(PORT12, ratio6_1, false);
-
-distance groundSense = distance(PORT13);
-
-
-
 //methods
-void chuck(){
-  if(chucker.hue() >= redLow || chucker.hue() <= redHigh){
-    Brain.Screen.clearLine();
-    Brain.Screen.print("Red Detected");
-    intake.spin(directionType::rev, 100, velocityUnits::pct);
-  } else if(chucker.hue() < redLow || chucker.hue() > redHigh){
-
-  }
-}
 
   //intake methods
 void intakeSpinFor(){
@@ -116,6 +94,10 @@ void intakeDownTwo(){
   lift.stop();
 }
 
+//auton methods
+
+
+
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -131,10 +113,6 @@ void pre_auton(void) {
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
-  chucker.setLight(ledState::on);
-  chucker.setLightPower(75, percentUnits::pct);
-  
-
 }
 
 /*---------------------------------------------------------------------------*/
