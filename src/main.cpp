@@ -39,7 +39,16 @@ motor_group intake = motor_group(hIntMotor, lIntMotor);
 
 //sensor intializations
 aivision windshield = aivision(PORT6);
-  
+  //red ring
+  aivision::colordesc RED1 = aivision::colordesc(1, 168, 9, 59, 28, 0.2);
+  aivision::colordesc RED2 = aivision::colordesc(2, 203, 32, 95, 10, 0.2);
+  aivision::colordesc RED3 = aivision::colordesc(3, 219, 46, 106, 10, 0.2);
+  aivision::colordesc RED4 = aivision::colordesc(4, 245, 121, 184, 10, 0.2);
+  //blue ring
+
+  //green goal
+  aivision::colordesc GREEN0 = aivision::colordesc(5, 124, 241, 93, 10, 0.2);
+  aivision::colordesc GREEN1 = aivision::colordesc(6, 101, 199, 82, 10, 0.2);
 //distance back = distance(PORT3);
 aivision backupCam = aivision(PORT4);
 
