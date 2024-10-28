@@ -38,7 +38,8 @@ motor lIntMotor = motor(PORT20, ratio18_1, true);
 motor_group intake = motor_group(hIntMotor, lIntMotor);
 
 //sensor intializations
-aivision windshield = aivision(PORT5);
+aivision windshield = aivision(PORT6);
+  
 //distance back = distance(PORT3);
 aivision backupCam = aivision(PORT4);
 
@@ -95,7 +96,11 @@ void intakeDownTwo(){
 }
 
 //auton methods
+void redDetect(){
+  if(){
 
+  }
+}
 
 
 
@@ -151,7 +156,6 @@ void usercontrol(void) {
     //intake press
     Controller.ButtonL1.pressed(intakeSpinFor);
     Controller.ButtonL1.released(intakeStop);
-    chucker.objectDetected(chuck);
     //outtake press
     Controller.ButtonDown.pressed(intakeSpinAga);
     Controller.ButtonDown.released(intakeStop);
