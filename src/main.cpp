@@ -193,19 +193,12 @@ void pre_auton(void) {
 }
 
 
-/*
+
 
 //P-controller code, p only cause its not a steady state operation
   //PD controller future? how much do you accelerate toward it. autonomous
   //D for driver makes controller not linear, harder to drive
-double fwdTarget = 0;
-double rotZTarget = 0;
-double currentRotationZ = 0;
-double rotZIncrement = 1.2;
-double kp = 0.013;
-double fwdConstant = 15;
 
-*/
 /*
   currentRotZ = current inertial heading
   fwdTarget = joystick value mapped from -1.0 to 1.0
@@ -216,52 +209,109 @@ double fwdConstant = 15;
 
   citation: Mr. Harrington, based off code he wrote for an Arduino-based puppy bot
   "https://github.com/BancroftSchoolOpenSource/ArduinoClassRobot/blob/main/ArduinoClassRobot.ino"
+
+  citation: Adam Vining-Recklitis, based off code he wrote for a robot last year
+  "https://github.com/BancroftRoboDogs/RobodogsCode_2023_03/blob/main/test/src/main.cpp"
+  thank you especially to Adam, for allowing me to work off his stuff, love ya buddy
 */
-/*
-float fmap(float x, float in_min, float in_max, float out_min, float out_max) {
-	const float run = in_max - in_min;
-	if (run == 0) {
-		log_e("map(): Invalid input range, min == max");
-		return -1; // AVR returns -1, SAM returns 0
-	}
-	const float rise = out_max - out_min;
-	const float delta = x - in_min;
-	return (delta * rise) / run + out_min;
-}//scaled joystick range down to target range for fwdTarget
+//PID
+class PID{
+ public:
+   double inertVal = 0.0;
+   double motorEncoderLeft = 0.0;
+   double motorEncoderRight = 0.0;
+   double error = 0.0;
+   double errorL = 0.0;
+   double errorR = 0.0;
+   double kP = 0.0;
+   double kI = 0.0;
+   double kD = 0.0;
+   double integral = 0.0;
+   double derivative = 0.0;
+   double prevError = 0.0;
+   double output = 0.0;
+   double M_PI = 3.14;
 
-void setTargets(double fwd, double rotz, double currentRotZ) {
-  fwdTarget = fwd;
-  rotZTarget += (rotz * rotZIncrement);
-  currentRotationZ = currentRotZ;
-
-  write();
+   PID(){
+   }
+   PID(double kP, double kI, double kD){
+     this->kP = kP;
+     this->kI = kI;
+     this->kD = kD;
+   }
+      void turnTo(double target){
+     int settle = 0;
+     inertVal = inert.rotation(rotationUnits::deg);
+     error = target - inertVal;
+     while(fabs(error) > 0.1){
+       inertVal = inert.rotation(rotationUnits::deg);
+       error = target - inertVal;
+       integral = integral + error;
+       // if(error==0 range){
+       //   integral=0;
+       // } implement fastest route
+       derivative = error - prevError;
+       prevError = error;
+       output = error * kP + integral * kI + derivative * kD;
+       leftDrive.spin(directionType::fwd, output, voltageUnits::volt);
+       rightDrive.spin(directionType::rev, output, voltageUnits::volt);
+       printf("turnto %f \n",error);
+       if(error < 5 && error > (-5)){
+         settle++;
+       }
+       if(settle > 50){
+         error = 0;
+         leftDrive.stop();
+         rightDrive.stop();
+       }
+       wait(10,msec);
+     }
+   }
+   void moveTo(double target){
+     int settle = 0;
+     motorEncoderLeft = fLMotor.position(rotationUnits::deg) * (5.417 * M_PI) / 360;
+     motorEncoderRight = fRMotor.position(rotationUnits::deg) * (5.417 * M_PI) / 360;
+     errorL = target - motorEncoderLeft;
+     errorR = target - motorEncoderRight;
+     error = (errorL+errorR) / 2;
+     while(fabs(error) > 0.1){
+       motorEncoderLeft = fLMotor.position(rotationUnits::deg) * (5.417 * M_PI) / 360;
+       motorEncoderRight = fRMotor.position(rotationUnits::deg) * (5.417 * M_PI) / 360;
+       errorL = target - motorEncoderLeft;
+       errorR = target - motorEncoderRight;
+       error = (errorL + errorR) / 2;
+       integral = integral + error;
+       // if(error==0 range){
+       //   integral=0;
+       // } implement fastest route
+       derivative = error - prevError;
+       prevError = error;
+       output = error * kP + integral * kI + derivative * kD;
+       leftDrive.spin(directionType::fwd, output, voltageUnits::volt);
+       rightDrive.spin(directionType::fwd, output, voltageUnits::volt);
+       printf("moveto: %f \n",error);
+       if(error < 5 && error > (-5)){
+         settle++;
+       }
+       if(settle > 50){
+         error = 0;
+         leftDrive.stop();
+         rightDrive.stop();
+         leftDrive.resetPosition();
+         rightDrive.resetPosition();
+       }
+              wait(10,msec);
+     }
+     leftDrive.resetPosition();
+     rightDrive.resetPosition();
+   }
 }
-void setTargets(double fwd, double rotz, double currentRotZ) {
-  fwdTarget = fwd;
-  rotZTarget += (rotz * rotZIncrement);
-  currentRotationZ = currentRotZ;
 
-  write();
-}//Targets for auton is manually set
+PID pidTurn = PID(0.4,0,0);
+PID pidStraight = PID(0.5,0,0);
 
 
-void write() {
-  double rotZErr = -kp * (rotZTarget - currentRotationZ);
-  lval = fwdConstant * fwdTarget - 90 * rotZErr + lCenter;
-  rval = -fwdConstant * fwdTarget - 90 * rotZErr + rCenter;
-  if (lval < 0)
-    lval = 0;
-  if (rval < 0)
-    rval = 0;
-  if (lval > 180)
-    lval = 180;
-  if (rval > 180)
-    rval = 180;
-  left.write(lval);
-  right.write(rval);
-}
 
-*/
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -274,8 +324,10 @@ void write() {
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void) {
-  /*
-  //LEFT SIDE
+
+
+/*
+  //RIGHT SIDE
   //set intake default velocity to max
   intake.setVelocity(100, velocityUnits::pct);
   //drive towards mobile goal
@@ -293,16 +345,16 @@ void autonomous(void) {
   //intake ring
   intake.spin(directionType::fwd);
   drive.spinFor(directionType::fwd, 1500, rotationUnits::deg, 100, velocityUnits::pct);
-  wait(650, timeUnits::msec);
+  wait(375, timeUnits::msec);
   //drive back towards tower
   intake.stop();
-  drive.spinFor(directionType::rev, 1800, rotationUnits::deg, 100, velocityUnits::pct);
+  drive.spinFor(directionType::rev, 1650, rotationUnits::deg, 100, velocityUnits::pct);
   drive.resetPosition();
   wait(1000, timeUnits::msec);
   intake.stop();
-*/
-/*
-  //RIGHT SIDE
+
+
+  //LEFT SIDE
   //set default intake velocity to max
   intake.setVelocity(100, velocityUnits::pct);
   //drive towards mobile goal
@@ -320,14 +372,15 @@ void autonomous(void) {
   //intake ring
   intake.spin(directionType::fwd);
   drive.spinFor(directionType::fwd, 1500, rotationUnits::deg, 100, velocityUnits::pct);
-  wait(650, timeUnits::msec);
+  wait(375, timeUnits::msec);
   //drive back towards tower
   intake.stop();
-  drive.spinFor(directionType::rev, 1800, rotationUnits::deg, 100, velocityUnits::pct);
+  drive.spinFor(directionType::rev, 1650, rotationUnits::deg, 100, velocityUnits::pct);
   drive.resetPosition();
   wait(1000, timeUnits::msec);
   intake.stop();
-*/
+
+
   //programmer skills
   drive.spinFor(directionType::rev, 1200, rotationUnits::deg, 50, velocityUnits::pct);
   mogoClamp.set(false);
@@ -352,6 +405,9 @@ void autonomous(void) {
   drive.spinFor(directionType::rev, 1500, rotationUnits::deg, 100, velocityUnits::pct);
   wait(1000, timeUnits::msec);
   intake.stop();
+*/
+
+
 
 }
 
