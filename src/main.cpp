@@ -26,7 +26,7 @@ motor topLMotor = motor(PORT16, ratio6_1, false);//top left motor
 motor rLMotor = motor(PORT19, ratio6_1, false);//rear left drive motor
 motor rRMotor = motor(PORT14, ratio6_1, true);//rear right drive motor
 
-inertial inert = inertial(PORT5);
+inertial inert = inertial(PORT10);
 
 motor_group leftDrive = motor_group(fLMotor, rLMotor, topLMotor);
 motor_group rightDrive = motor_group(fRMotor, rRMotor, topRMotor);
@@ -37,7 +37,7 @@ float driveChanger = 1.0;
 //smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert, 12.57, 10.625, 9.5, inches, 2);
 
 //intake intializations
-motor hIntMotor = motor(PORT11, ratio18_1, true);
+motor hIntMotor = motor(PORT2, ratio18_1, true);
 motor lIntMotor = motor(PORT20, ratio6_1, true);
 
 motor_group intake = motor_group(hIntMotor, lIntMotor);
