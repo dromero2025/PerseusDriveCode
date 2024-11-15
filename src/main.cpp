@@ -214,6 +214,7 @@ void pre_auton(void) {
   "https://github.com/BancroftRoboDogs/RobodogsCode_2023_03/blob/main/test/src/main.cpp"
   thank you especially to Adam, for allowing me to work off his stuff, love ya buddy
 */
+
 //PID
 class PID{
  public:
@@ -230,16 +231,16 @@ class PID{
    double derivative = 0.0;
    double prevError = 0.0;
    double output = 0.0;
-   double M_PI = 3.14;
 
-   PID(){
+   PID(){ //basic constructror
    }
-   PID(double kP, double kI, double kD){
+
+   PID(double kP, double kI, double kD){ //sets up k values
      this->kP = kP;
      this->kI = kI;
      this->kD = kD;
    }
-      void turnTo(double target){
+    void turnTo(double target){ //turn to n degrees
      int settle = 0;
      inertVal = inert.rotation(rotationUnits::deg);
      error = target - inertVal;
@@ -267,7 +268,7 @@ class PID{
        wait(10,msec);
      }
    }
-   void moveTo(double target){
+   void moveTo(double target){ //move to n dis
      int settle = 0;
      motorEncoderLeft = fLMotor.position(rotationUnits::deg) * (5.417 * M_PI) / 360;
      motorEncoderRight = fRMotor.position(rotationUnits::deg) * (5.417 * M_PI) / 360;
@@ -306,12 +307,8 @@ class PID{
      rightDrive.resetPosition();
    }
 }
-
-PID pidTurn = PID(0.4,0,0);
-PID pidStraight = PID(0.5,0,0);
-
-
-
+turning = new PID(0.5, 0.0, 0.0);
+moving = new PID(0.4, 0.0, 0.0);
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -323,7 +320,7 @@ PID pidStraight = PID(0.5,0,0);
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-void autonomous(void) {
+void autonomous(void){ 
 
 
 /*
@@ -405,7 +402,7 @@ void autonomous(void) {
   drive.spinFor(directionType::rev, 1500, rotationUnits::deg, 100, velocityUnits::pct);
   wait(1000, timeUnits::msec);
   intake.stop();
-*/
+  */
 
 
 
