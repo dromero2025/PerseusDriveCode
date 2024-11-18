@@ -306,9 +306,9 @@ class PID{
      leftDrive.resetPosition();
      rightDrive.resetPosition();
    }
-}
-turning = new PID(0.5, 0.0, 0.0);
-moving = new PID(0.4, 0.0, 0.0);
+};
+PID turning = PID(0.3, 0.0, 0.0);
+PID moving = PID(0.4, 0.0, 0.0);
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -321,12 +321,10 @@ moving = new PID(0.4, 0.0, 0.0);
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void){ 
+  intake.setVelocity(100,velocityUnits::pct);
 
 
-/*
   //RIGHT SIDE
-  //set intake default velocity to max
-  intake.setVelocity(100, velocityUnits::pct);
   //drive towards mobile goal
   drive.spinFor(directionType::rev, 900, rotationUnits::deg, 50, velocityUnits::pct);
   drive.stop();
@@ -350,10 +348,19 @@ void autonomous(void){
   wait(1000, timeUnits::msec);
   intake.stop();
 
+  //RIGHT SIDE W/Intertial
+  //move towards goal
+  moving.moveTo(24.0);
+  //clamp
+  mogoClamp.set(false);
+  //intake preload onto goal, keep intake running
+  intake.spin(directionType::fwd);
+  //turn towards ring stack
+  turning.turnTo(90.0);
+  //move into rings
+  moving.moveTo(24);
 
   //LEFT SIDE
-  //set default intake velocity to max
-  intake.setVelocity(100, velocityUnits::pct);
   //drive towards mobile goal
   drive.spinFor(directionType::rev, 900, rotationUnits::deg, 50, velocityUnits::pct);
   drive.stop();
@@ -376,35 +383,21 @@ void autonomous(void){
   drive.resetPosition();
   wait(1000, timeUnits::msec);
   intake.stop();
-
-
-  //programmer skills
-  drive.spinFor(directionType::rev, 1200, rotationUnits::deg, 50, velocityUnits::pct);
+  
+  //LEFT SIDE W/Intertial
+  //move towards goal
+  moving.moveTo(24.0);
+  //clamp
   mogoClamp.set(false);
-  intake.spinFor(directionType::fwd, 500, rotationUnits::deg, 100, velocityUnits::pct);
-  drive.resetPosition();
-  rightDrive.spinFor(directionType::rev, 550, rotationUnits::deg, 25, velocityUnits::pct);
-  leftDrive.spinFor(directionType::rev, -750, rotationUnits::deg, 25, velocityUnits::pct);
-  intake.setVelocity(100, velocityUnits::pct);
+  //intake preload onto goal, keep intake running
   intake.spin(directionType::fwd);
-  drive.spinFor(directionType::fwd, 2000, rotationUnits::deg, 100, velocityUnits::pct);
-  wait(1000, timeUnits::msec);
-  drive.spinFor(directionType::fwd, 2000, rotationUnits::deg, 100, velocityUnits::pct);
-  wait(500, timeUnits::msec);
-  intake.stop();
-
-  drive.resetPosition();
-  drive.spinFor(directionType::rev, 1500, rotationUnits::deg, 100, velocityUnits::pct);
-  drive.resetPosition();
-  rightDrive.spinFor(directionType::rev, -750, rotationUnits::deg, 25, velocityUnits::pct);
-  leftDrive.spinFor(directionType::rev, 550, rotationUnits::deg, 25, velocityUnits::pct);
-  intake.setVelocity(100, velocityUnits::pct);
-  drive.spinFor(directionType::rev, 1500, rotationUnits::deg, 100, velocityUnits::pct);
-  wait(1000, timeUnits::msec);
-  intake.stop();
-  */
+  //turn towards ring stack
+  turning.turnTo(-90.0);
+  //move into rings
+  moving.moveTo(24);
 
 
+  //Theoretical Left Side With PID
 
 }
 
