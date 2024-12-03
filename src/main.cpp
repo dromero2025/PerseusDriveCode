@@ -11,7 +11,6 @@
 
 
 using namespace vex;
-using namespace bancroft;
 
 // A global instance of competition
 competition Competition;
@@ -46,6 +45,107 @@ motor_group intake = motor_group(hIntMotor, lIntMotor);
 motor_group drivetake = motor_group(fLMotor, rLMotor, topLMotor, fRMotor, rRMotor, topRMotor, hIntMotor, lIntMotor);
 
 
+class PID{
+ public:
+   double inertVal=0.0;
+   double motorEncoderLeft=0.0;
+   double motorEncoderRight=0.0;
+   double error=0.0;
+   double errorL=0.0;
+   double errorR=0.0;
+   double kP=0.0;
+   double kI=0.0;
+   double kD=0.0;
+   double integral=0.0;
+   double derivative=0.0;
+   double prevError=0.0;
+   double output=0.0;
+
+  PID(){}
+  PID(double kP, double kI, double kD){
+    this->kP=kP;
+    this->kI=kI;
+    this->kD=kD;
+  }
+  void turnTo(double target){
+    int settle = 0;
+    inertVal=inert.rotation(degrees);
+    error=target-inertVal;
+    while(fabs(error)>0.1){
+      inertVal=inert.rotation(degrees);
+      error=target-inertVal;
+      integral=integral+error;
+      // if(error==0 range){
+      //   integral=0;
+      // } implement fastest route
+      derivative=error-prevError;
+      prevError=error;
+      output=error*kP+integral*kI+derivative*kD;
+      leftDrive.spin(forward, output, volt);
+      rightDrive.spin(reverse, output, volt);
+      printf("turnto %f \n",error);
+      if(error<5&&error>(-5)){
+        settle++;
+      }
+      if(settle>50){
+        error=0;
+        leftDrive.stop();
+        rightDrive.stop();
+      }
+      wait(10,msec);
+    }
+  }
+  void moveTo(double target){
+    int settle = 0;
+    motorEncoderLeft=fLMotor.position(degrees)*(3.25*M_PI)/360;
+    motorEncoderRight=fRMotor.position(degrees)*(3.25*M_PI)/360;
+    errorL=target-motorEncoderLeft;
+    errorR=target-motorEncoderRight;
+    error=(errorL+errorR)/2;
+    while(fabs(error)>0.1){
+      motorEncoderLeft=fLMotor.position(degrees)*(3.25*M_PI)/360;
+      motorEncoderRight=fRMotor.position(degrees)*(3.25*M_PI)/360;
+      errorL=target-motorEncoderLeft;
+      errorR=target-motorEncoderRight;
+      error=(errorL+errorR)/2;
+      integral=integral+error;
+      // if(error==0 range){
+      //   integral=0;
+      // } implement fastest route
+      derivative=error-prevError;
+      prevError=error;
+      output=error*kP+integral*kI+derivative*kD;
+      leftDrive.spin(forward, output, volt);
+      rightDrive.spin(forward, output, volt);
+      printf("moveto: %f \n",error);
+      if(error<5 && error>(-5)){
+        settle++;
+      }
+      if(settle>50){
+        error=0;
+        leftDrive.stop();
+        rightDrive.stop();
+        leftDrive.resetPosition();
+        rightDrive.resetPosition();
+      }
+            wait(10,msec);
+    }
+    leftDrive.resetPosition();
+    rightDrive.resetPosition();
+  }
+};
+
+PID turning = PID(0.4, 0.0, 0.65);
+PID moving = PID(0.6, 0.0, 0.5);
+
+float mapTo180(float angle) {
+  return angle - 360 * (int(angle) / 180 - int(angle) / 360);
+}
+float mapTo360(float angle) {
+  return angle - 360 * (int(angle) / 360 + (angle < 0)) * ((angle >= 0) - (angle < 0));
+}
+
+
   enum VisionSignatures {
     mobileGoal,
     redRing,
@@ -58,8 +158,13 @@ motor_group drivetake = motor_group(fLMotor, rLMotor, topLMotor, fRMotor, rRMoto
   aivision::aiobjdesc blueRingObj = aivision::aiobjdesc(VisionSignatures::blueRing);
 
 //sensor intializations
-aivision windshieldRight = aivision(PORT9, aivision::ALL_AIOBJS);
-aivision windshieldLeft = aivision(PORT3, aivision::ALL_AIOBJS);
+aivision windshield = aivision(PORT9, aivision::ALL_AIOBJS);
+
+struct aiVisionObjectWrapper {
+    bool exists;
+    aivision::object object;
+};
+
 
 class aivisionUtil{
   public:
@@ -70,133 +175,93 @@ class aivisionUtil{
     int xRes;
     int yRes; 
 
-    float camDist;
+    float camHeight;
 
     float xResFovRatio;
     float yResFovRatio;
 
-    float camCenterDist; 
-
-    float thetaOne;//angle from left camera
-    float thetaTwo;//angle from right camera
-    
-    float thetaTrueOne;
-    float thetaTrueTwo;
-    float thetaTrue;
-
-    float xOne;//distance from left camera 
-    float xTwo;//distance from right camera
-
-    float xTrueOne;
-    float xTrueTwo;
-    float xTrue;
-
-    float xOnePix;
-    float xTwoPix;
-
-    float absolutePos;//position from center of robot
+    float distance;//position from center of robot
 
 
-  aivisionUtil (float aiXFov, float aiYFov, int xRes, int yRes, float camDist){
+  aivisionUtil (float aiXFov, float aiYFov, int xRes, int yRes, float camHeight){
     this->aiXFov = aiXFov; 
     this->aiYFov = aiYFov;
     this->xRes = xRes;
     this->yRes = yRes;
-    this->camDist = camDist;
+    this->camHeight = camHeight;
     
 
 
     xResFovRatio = aiXFov / xRes;
     yResFovRatio = aiYFov / yRes;
 
-    camCenterDist = camDist / 2; 
-  }
-  float aiDistance(aivision::object lefty, aivision::object righty){
-    aivision::object objLeft = lefty;
-    aivision::object objRight = righty;
-
-    if(lefty.centerX > xRes/2){
-      xOnePix = lefty.centerX - xRes/2;
-    } else if(lefty.centerX < xRes/2){
-      xOnePix = -lefty.centerX + xRes/2;
-    } else {
-      xOnePix = 0;
-    }
-
-    if(righty.centerX > xRes/2){
-      xTwoPix = righty.centerX - xRes/2;
-    } else if(righty.centerX < xRes/2){
-      xTwoPix = -righty.centerX + xRes/2;
-    } else {
-      xTwoPix = 0;
-    }
-
-    thetaOne = (aiXFov/xRes) * xOnePix;
-    thetaTwo = (aiXFov/xRes) * xTwoPix;
-
-    xOne = (xRes/aiXFov) * thetaOne;
-    xTwo = (xRes/aiXFov) * thetaTwo;
-
-    xTrueOne = xOne - (camCenterDist/2);
-    xTrueTwo = xTwo - (camCenterDist/2);
-    xTrue = (xTrueOne + xTrueTwo)/2;
-
-    thetaTrueOne = xTrue/(xOne * thetaOne);
-    thetaTrueTwo = xTrue/(xTrue * thetaTwo);
-    thetaTrue = (thetaTrueOne + thetaTrueTwo)/2;
-
-    absolutePos = xTrue/(tan(thetaTrue));
-  
-    return absolutePos;
   }
 
-  float aiRotation(aivision::object lefty, aivision::object righty){
-    aivision::object objLeft = lefty;
-    aivision::object objRight = righty;
+  aiVisionObjectWrapper getClosest(aivision::objdesc target){
+    aiVisionObjectWrapper returner;
+    windshield.takeSnapshot(target, 8);
 
-    if(lefty.centerX > xRes/2){
-      xOnePix = lefty.centerX - xRes/2;
-    } else if(lefty.centerX < xRes/2){
-      xOnePix = -lefty.centerX + xRes/2;
+      if(windshield.objectCount == 0){
+        returner.exists = false; 
+        returner.object = aivision::object();
+      } else if (windshield.objectCount != 0){
+        returner.exists = true;
+        returner.object = windshield.objects[0];
+      }
+    printf("objects: %i \n", windshield.objectCount);
+    return returner; 
+  }
+  bool aiCenter(aivision::objdesc target){
+    aiVisionObjectWrapper close = getClosest(target);
+    
+    double trueX = close.object.centerX - (xRes/2);
+    
+    double theta = trueX/((xRes * aiXFov)/2);
+
+    printf("objects angle from: %d \n", theta);
+
+    if(close.exists == true){
+
+      if(close.object.centerX != 0){
+        //enter theta
+        turning.turnTo(theta);
+
+        return true;
+      } else {
+
+        return true;
+      }
+
     } else {
-      xOnePix = 0;
+      return false; 
     }
 
-    if(righty.centerX > xRes/2){
-      xTwoPix = righty.centerX - xRes/2;
-    } else if(righty.centerX < xRes/2){
-      xTwoPix = -righty.centerX + xRes/2;
-    } else {
-      xTwoPix = 0;
-    }
-
-    thetaOne = (aiXFov/xRes) * xOnePix;
-    thetaTwo = (aiXFov/xRes) * xTwoPix;
-
-    xOne = (xRes/aiXFov) * thetaOne;
-    xTwo = (xRes/aiXFov) * thetaTwo;
-
-    xTrueOne = xOne - (camCenterDist/2);
-    xTrueTwo = xTwo - (camCenterDist/2);
-    xTrue = (xTrueOne + xTrueTwo)/2;
-
-    thetaTrueOne = xTrue/(xOne * thetaOne);
-    thetaTrueTwo = xTrue/(xTrue * thetaTwo);
-    thetaTrue = (thetaTrueOne + thetaTrueTwo)/2;
-
-    if(xOne == xTwo){
-      thetaTrue = 0;
-    }
-
-    return thetaTrue;
   } 
+  bool aiDistance(aivision::objdesc target){
+    aiVisionObjectWrapper close = getClosest(target);
 
+
+    bool truing = aiCenter(target);
+    
+    if(truing == false){
+      return false;
+    } else {
+      int objWidth = close.object.width;
+
+      float alphaOne = objWidth/(xRes * aiXFov);
+      float zHigh = (objWidth/2)/(tan(alphaOne/2));
+
+      float zTrue = sqrt(pow(zHigh, 2) - pow(camHeight, 2));
+
+      moving.moveTo(zTrue);
+
+      return true;
+    }
+
+  } 
 };
 
-//intake redirect intitializations
-motor liftLeft = motor(PORT2, ratio18_1, true);
-motor liftRight = motor(PORT9, ratio18_1, false);
-motor_group lift = (liftLeft, liftRight);
+aivisionUtil windshieldUtil = aivisionUtil(74, 63, 320, 240, 10.5);
 
 //clamp initializations
 bool clamp = false;
@@ -248,44 +313,6 @@ void undoink(){
   Adown = false;
 }
 
-  //redirect methods
-void intakeLift(){
-  lift.spin(directionType::fwd, 100, velocityUnits::pct);
-  //xyloPrint();
-}
-void intakeLiftBack(){
-  lift.spin(directionType::rev, 100, velocityUnits::pct);
-  //xyloPrint();
-}
-void intakeDownOne(){
-  lift.setStopping(hold);
-  lift.stop();
-}
-void intakeDownTwo(){
-  lift.setStopping(coast);
-  lift.stop();
-}
-
-PID rightSidePID = PID(0.8, 0, 0.6, 2, 2, 200);
-PID leftSidePID = PID(0.8, 0, 0.6, 2, 2, 200);
-float L = 11.25;
-float c = 2 * M_PI * (3.25/2);
-
-void moveSides(float rightSideDistance, float leftSideDistance) {
-  drive.resetPosition();
-  rightSideDistance += c * rightDrive.position(rev);
-  leftSideDistance += c * leftDrive.position(rev);
-  rightSidePID.pidReset();
-  leftSidePID.pidReset();
-  do {
-    rightDrive.spin(fwd, rightSidePID.pidControl(rightSideDistance, c * rightDrive.position(rev)), volt);
-    leftDrive.spin(fwd, leftSidePID.pidControl(leftSideDistance, c * leftDrive.position(rev)), volt);
-    wait(10, msec);
-  } while(!(rightSidePID.isSettled() && leftSidePID.isSettled()));
-  rightDrive.stop(coast);
-  leftDrive.stop(coast);
-}
-
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -298,9 +325,10 @@ void moveSides(float rightSideDistance, float leftSideDistance) {
 
 void pre_auton(void) {
   mogoClamp.set(true);
-  inert.calibrate();
   drive.resetPosition();
+  drive.setStopping(brakeType::brake);
   intake.resetPosition();
+  inert.calibrate();
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
@@ -329,7 +357,6 @@ void pre_auton(void) {
   thank you especially to Adam, for allowing me to work off his stuff, love ya buddy
 */
 
-aivisionUtil windshield = aivisionUtil(74, 63, 320, 240, 10.5);
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -342,120 +369,27 @@ aivisionUtil windshield = aivisionUtil(74, 63, 320, 240, 10.5);
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void){ 
-  windshieldLeft.modelDetection(true);
-  windshieldRight.modelDetection(true);
-
+  inert.resetRotation();
+  windshield.modelDetection(true);
   intake.setVelocity(100,velocityUnits::pct);
   drive.resetPosition();
-  int slotter = 4;
+  
 
+  int slotter = 0;
+    //EXPERIEMENTAL AUTON WITH AI-BASED PID
+    if(slotter == 0){
+      
+      //printf("%d", output);
 
-  // //RIGHT SIDE
-  // //drive towards mobile goal
-  // drive.spinFor(directionType::rev, 900, rotationUnits::deg, 50, velocityUnits::pct);
-  // drive.stop();
-  // //clamp goal
-  // mogoClamp.set(false);
-  // //load preload onto goal
-  // intake.spinFor(directionType::fwd, 1000, rotationUnits::deg, 100, velocityUnits::pct);
-  // drive.resetPosition();
-  // //turn right
-  // leftDrive.spinFor(directionType::rev, 225, rotationUnits::deg, 25, velocityUnits::pct);
-  // rightDrive.spinFor(directionType::rev, -400, rotationUnits::deg, 25, velocityUnits::pct);
-  // drive.resetPosition();
-  // //intake ring
-  // intake.spin(directionType::fwd);
-  // drive.spinFor(directionType::fwd, 1500, rotationUnits::deg, 100, velocityUnits::pct);
-  // wait(375, timeUnits::msec);
-  // //drive back towards tower
-  // intake.stop();
-  // drive.spinFor(directionType::rev, 1650, rotationUnits::deg, 100, velocityUnits::pct);
-  // drive.resetPosition();
-  // wait(1000, timeUnits::msec);
-  // intake.stop();
-/*
-  //RIGHT SIDE W/Intertial
-  if (slotter == 1){
-    //move towards goal
-    moving.moveTo(24);
-    //clamp
-    mogoClamp.set(false);
-    //intake preload onto goal, keep intake running
-    intake.spin(directionType::fwd);
-    //turn towards ring stack
-    turning.turnTo(90);
-    //move into rings
-    moving.moveTo(24);
-  }
+      //turning.turnTo(turn);
 
-  // //LEFT SIDE
-  // //drive towards mobile goal
-  // drive.spinFor(directionType::rev, 900, rotationUnits::deg, 50, velocityUnits::pct);
-  // drive.stop();
-  // //clamp goal
-  // mogoClamp.set(false);
-  // //load preload onto goal
-  // intake.spinFor(directionType::fwd, 1000, rotationUnits::deg, 100, velocityUnits::pct);
-  // drive.resetPosition();
-  // //turn left
-  // rightDrive.spinFor(directionType::rev, 225, rotationUnits::deg, 25, velocityUnits::pct);
-  // leftDrive.spinFor(directionType::rev, -400, rotationUnits::deg, 25, velocityUnits::pct);
-  // drive.resetPosition();
-  // //intake ring
-  // intake.spin(directionType::fwd);
-  // drive.spinFor(directionType::fwd, 1500, rotationUnits::deg, 100, velocityUnits::pct);
-  // wait(375, timeUnits::msec);
-  // //drive back towards tower
-  // intake.stop();
-  // drive.spinFor(directionType::rev, 1650, rotationUnits::deg, 100, velocityUnits::pct);
-  // drive.resetPosition();
-  // wait(1000, timeUnits::msec);
-  // intake.stop();
+      windshieldUtil.aiCenter(redRingObj);
 
-  //LEFT SIDE W/Intertial
-  if (slotter == 2){
-    drive.resetPosition();
-  //move towards goal
-  moving.moveTo(-42);
-  //clamp
-  mogoClamp.set(false);
-  //turn towards ring stack
-  turning.turnTo(-130);
-  //intake preload onto goal, keep intake running
-  intake.spin(directionType::fwd);
-  //move into rings
-  drive.resetPosition();
-  moving.moveTo(24);
-  turning.turnTo(-90);
-  moving.moveTo(24);
-
-  }
-  */
-  //EXPERIEMENTAL AUTON WITH AI-BASED PID
-  if(slotter == 3){
-    while(true){
-
-      printf("%d, %d", windshieldLeft.installed(), windshieldRight.installed());
-
-      windshieldLeft.takeSnapshot(redRingObj, 8);
-      windshieldRight.takeSnapshot(redRingObj, 8);
-
-      wait(10, timeUnits::msec);
-      Brain.Screen.clearScreen();
-      if(windshieldLeft.objectCount < 1){
-        Brain.Screen.printAt(0, 30, "Left: I can't see shit homie");
-      } else {
-        Brain.Screen.printAt(0, 30, "Left: I can see: %f", (windshield.aiRotation(windshieldLeft.objects[0], windshieldRight.objects[0]))*10);
-      }
-    }
-  }
-
-  if(slotter == 4){
-    
-    moveSides(90/9, -90/9);
 
     }
-  }
+
+  
+}
 
 
 
@@ -490,13 +424,8 @@ void usercontrol(void) {
     Controller.ButtonL2.pressed(clamped);
     Controller.ButtonL2.released(unclamped);
     //doink code
-    Controller.ButtonA.pressed(doinked);
-    Controller.ButtonA.released(undoink);
-    //redirect code
-    Controller.ButtonR1.pressed(intakeLift);
-    Controller.ButtonR2.pressed(intakeLiftBack);
-    Controller.ButtonR1.released(intakeDownOne);
-    Controller.ButtonR2.released(intakeDownTwo);
+    Controller.ButtonR1.pressed(doinked);
+    Controller.ButtonR1.released(undoink);
     //avgTemp();
 
     wait(20, msec); // Sleep the task for a short amount of time to
