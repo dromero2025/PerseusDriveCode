@@ -35,6 +35,10 @@ motor_group drive = motor_group(fLMotor, rLMotor, topLMotor, fRMotor, rRMotor, t
 
 float driveChanger = 1.0;
 
+float turnChanger(float x){
+  return (1/10000) * (pow(x, 3));
+}
+
 //smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert, 12.57, 10.625, 9.5, inches, 2);
 
 //intake intializations
@@ -44,6 +48,8 @@ motor lIntMotor = motor(PORT20, ratio6_1, true);
 motor_group intake = motor_group(hIntMotor, lIntMotor);
 motor_group drivetake = motor_group(fLMotor, rLMotor, topLMotor, fRMotor, rRMotor, topRMotor, hIntMotor, lIntMotor);
 
+
+distance clamper = distance(PORT3);
 
 class PID{
  public:
@@ -275,6 +281,10 @@ pneumatics doink = pneumatics(Brain.ThreeWirePort.B);
   //intake methods
 void intakeSpinFor(){
   intake.spin(directionType::fwd, 100, velocityUnits::pct);
+  if(intake.velocity(velocityUnits::pct) != 100){
+    intake.spinFor(directionType::rev, 250, timeUnits::msec);
+  }
+  intake.spin(directionType::fwd, 100, velocityUnits::pct);
   //kamalaPrint();
 }
 void intakeSpinAga(){
@@ -297,6 +307,12 @@ void clamped(){
 }
 void unclamped(){
   R1down = false;
+}
+void autoClamping(){
+  float clampDist = clamper.objectDistance(distanceUnits::mm);
+  if(clampDist <= 25){
+    clamped();
+  }
 }
   //doink methods
 void doinked(){
@@ -375,16 +391,34 @@ void autonomous(void){
   drive.resetPosition();
   
 
-  int slotter = 0;
+  int slotter = 1;
     //EXPERIEMENTAL AUTON WITH AI-BASED PID
     if(slotter == 0){
-      
-      //printf("%d", output);
 
-      //turning.turnTo(turn);
-
-      windshieldUtil.aiCenter(redRingObj);
-
+    } else if(slotter == 1){ //four ring side master auton
+      moving.moveTo(-28);
+      while(mogoClamp.value() != false){
+        autoClamping();
+      }
+      intake.spin(directionType::fwd);
+      turning.turnTo(-90);
+      moving.moveTo(28);
+      wait(250, msec);
+      moving.moveTo(-4);
+      turning.turnTo(-175);
+      turning.turnTo(-185);
+      moving.moveTo(21);
+      moving.moveTo(-21);
+      turning.turnTo(-175);
+      moving.moveTo(21);
+      moving.moveTo(-21);
+      turning.turnTo(-180);
+      turning.turnTo(0);
+      moving.moveTo(24);
+      turning.turnTo(-45);
+      moving.moveTo(24);
+      wait(500, timeUnits::msec);
+      intake.stop();
 
     }
 
@@ -410,8 +444,8 @@ void usercontrol(void) {
     Brain.Screen.print("auton");
 
   //drivetrain code
-    leftDrive.spin(directionType::fwd, (Controller.Axis3.value() + Controller.Axis1.value()) * driveChanger, velocityUnits::pct);
-    rightDrive.spin(directionType::fwd, (Controller.Axis3.value() - Controller.Axis1.value()) * driveChanger, velocityUnits::pct);
+    leftDrive.spin(directionType::fwd, (Controller.Axis3.value() + turnChanger(Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
+    rightDrive.spin(directionType::fwd, (Controller.Axis3.value() - turnChanger(Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
     
   //intake code 
     //intake press
@@ -421,8 +455,9 @@ void usercontrol(void) {
     Controller.ButtonDown.pressed(intakeSpinAga);
     Controller.ButtonDown.released(intakeStop);
     //clamp code
-    Controller.ButtonL2.pressed(clamped);
+    // Controller.ButtonL2.pressed(clamped);
     Controller.ButtonL2.released(unclamped);
+    autoClamping();
     //doink code
     Controller.ButtonR1.pressed(doinked);
     Controller.ButtonR1.released(undoink);
