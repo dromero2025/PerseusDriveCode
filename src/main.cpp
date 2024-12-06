@@ -98,7 +98,7 @@ class PID{
         leftDrive.stop();
         rightDrive.stop();
       }
-      wait(10,msec);
+      wait(50,msec);
     }
   }
   void moveTo(double target){
@@ -270,20 +270,32 @@ class aivisionUtil{
 aivisionUtil windshieldUtil = aivisionUtil(74, 63, 320, 240, 10.5);
 
 //clamp initializations
-bool clamp = false;
 bool doinker = false;
 bool Adown = false;
-bool R1down = false;
 pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
 pneumatics doink = pneumatics(Brain.ThreeWirePort.B);
 
+class unjammer{
+  
+  public:
+
+  static void unjam(){
+    int jamVar = 100;
+    int lowIntHighRange = lIntMotor.position(rotationUnits::deg) + jamVar;
+    int lowIntLowRange = lIntMotor.position(rotationUnits::deg) - jamVar;
+    int hIntVelocity = hIntMotor.position(rotationUnits::deg);
+
+    if(lowIntHighRange < hIntVelocity || lowIntLowRange > hIntVelocity){
+      intake.spinFor(directionType::rev, 500, timeUnits::msec);
+      intake.resetPosition();
+    }
+  }
+};
 //methods
   //intake methods
 void intakeSpinFor(){
-  intake.spin(directionType::fwd, 100, velocityUnits::pct);
-  if(intake.velocity(velocityUnits::pct) != 100){
-    intake.spinFor(directionType::rev, 250, timeUnits::msec);
-  }
+  intake.resetPosition();
+  //unjammer::unjam();
   intake.spin(directionType::fwd, 100, velocityUnits::pct);
   //kamalaPrint();
 }
@@ -292,28 +304,38 @@ void intakeSpinAga(){
   //kamalaPrint();
 }
 void intakeStop(){
+
   intake.stop();
 }
-  //clamp methods
-void clamped(){
-  //mogoClamp.set(true);
+
+bool releaser = false;
+
+//clamp methods
+class autoClamper{
+
+  public:
+
+    static void stopAutoClamping(){
+      mogoClamp.set(true);
+    }
   
-  if(R1down == false){
-    mogoClamp.set(clamp);
-    clamp = !clamp;
+  static void startAutoClamping(){
+    float dist = clamper.objectDistance(distanceUnits::mm);
+
+    if(Controller.ButtonR2.pressing() == true){
+      stopAutoClamping();
+    } else {
+      if(dist <= 25){
+        mogoClamp.set(false);
+      } else {
+        mogoClamp.set(true);
+      }
+    }
   }
-  //xylo1Print();
-  R1down = true;
-}
-void unclamped(){
-  R1down = false;
-}
-void autoClamping(){
-  float clampDist = clamper.objectDistance(distanceUnits::mm);
-  if(clampDist <= 25){
-    clamped();
-  }
-}
+
+};
+
+
   //doink methods
 void doinked(){
   //mogoClamp.set(true);
@@ -328,6 +350,8 @@ void doinked(){
 void undoink(){
   Adown = false;
 }
+
+
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -385,41 +409,135 @@ void pre_auton(void) {
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void){ 
-  inert.resetRotation();
+
+  inert.calibrate();
+
   windshield.modelDetection(true);
   intake.setVelocity(100,velocityUnits::pct);
   drive.resetPosition();
   
 
-  int slotter = 1;
+  int slotter = 2;
     //EXPERIEMENTAL AUTON WITH AI-BASED PID
     if(slotter == 0){
 
     } else if(slotter == 1){ //four ring side master auton
-      moving.moveTo(-28);
-      while(mogoClamp.value() != false){
-        autoClamping();
-      }
+      //drive towards goal, then slowly back into it
+      autoClamper::startAutoClamping;
+      moving.moveTo(-22);
+      moving.moveTo(-6);
+      moving.moveTo(-6);
+      //clamp goal and wait .25 sec then move back
+      mogoClamp.set(false);
+      wait(250, timeUnits::msec);
+      moving.moveTo(3);
+      //put preload onto goal
       intake.spin(directionType::fwd);
+      //turn to two ring stack
+      wait(750, msec);
       turning.turnTo(-90);
-      moving.moveTo(28);
-      wait(250, msec);
-      moving.moveTo(-4);
-      turning.turnTo(-175);
-      turning.turnTo(-185);
-      moving.moveTo(21);
-      moving.moveTo(-21);
-      turning.turnTo(-175);
-      moving.moveTo(21);
-      moving.moveTo(-21);
-      turning.turnTo(-180);
-      turning.turnTo(0);
-      moving.moveTo(24);
-      turning.turnTo(-45);
-      moving.moveTo(24);
+      wait(750, timeUnits::msec);
+      //intake bottom of two ring stack
+      moving.moveTo(18);
+      moving.moveTo(11);
       wait(500, timeUnits::msec);
+      moving.moveTo(5);
+      //DONE FINISHED
+
+
+      wait(1000, timeUnits::msec);
+      //move back and turn towards four rings
+      moving.moveTo(-8);
+      turning.turnTo(-170);
+      //turn towards left ring
+      //intake left ring
+      moving.moveTo(15);
+      wait(500, timeUnits::msec);
+      moving.moveTo(-18);
+      turning.turnTo(-180);
+
+      //turn towards right ring
+      //turning.turnTo(-177.5);
+      //intake right ring
+      moving.moveTo(20);
+      moving.moveTo(-20);
+      //turn around
       intake.stop();
 
+    } else if(slotter == 2){
+      moving.moveTo(-22);
+      moving.moveTo(-6);
+      moving.moveTo(-6);
+      //clamp goal and wait .25 sec then move back
+      mogoClamp.set(false);
+      wait(250, timeUnits::msec);
+      moving.moveTo(3);
+      //put preload onto goal
+      intake.spin(directionType::fwd);
+      //turn to two ring stack
+      wait(250, msec);
+      turning.turnTo(-90);
+      mogoClamp.set(true);
+      wait(750, timeUnits::msec);
+      //intake bottom of two ring stack
+      moving.moveTo(18);
+      moving.moveTo(11);
+      wait(125, timeUnits::msec);
+      intake.stop();
+      moving.moveTo(5);
+      moving.moveTo(-8);
+      turning.turnTo(0);
+      moving.moveTo(-17);
+      moving.moveTo(-6);
+      mogoClamp.set(false);
+      moving.moveTo(6);
+      intake.spin(directionType::fwd);
+
+    } else if(slotter == 3){
+      intake.spinFor(directionType::fwd, 1, timeUnits::sec);
+      moving.moveTo(12);
+      turning.turnTo(90);
+      moving.moveTo(-12);
+      moving.moveTo(-4);
+      mogoClamp.set(false);
+      moving.moveTo(-8);
+      turning.turnTo(0);
+      wait(250, timeUnits::msec);
+      intake.spin(directionType::fwd);
+      moving.moveTo(22);
+      turning.turnTo(-90);
+      moving.moveTo(30);
+
+    } else if (slotter == 4){
+      //drive towards goal, then slowly back into it
+      autoClamper::startAutoClamping;
+      moving.moveTo(-22);
+      moving.moveTo(-6);
+      moving.moveTo(-6);
+      //clamp goal and wait .25 sec then move back
+      mogoClamp.set(false);
+      wait(250, timeUnits::msec);
+      moving.moveTo(3);
+      //put preload onto goal
+      intake.spin(directionType::fwd);
+      //turn to two ring stack
+      wait(750, msec);
+      turning.turnTo(-90);
+      wait(750, timeUnits::msec);
+      //intake bottom of two ring stack
+      moving.moveTo(18);
+      moving.moveTo(11);
+      wait(500, timeUnits::msec);
+      moving.moveTo(5);
+      //DONE FINISHED
+
+      mogoClamp.set(true);
+      intake.stop();
+      turning.turnTo(135);
+      moving.moveTo(24);
+      turning.turnTo(90);
+      moving.moveTo(36);
+      //win point two ring
     }
 
   
@@ -444,20 +562,19 @@ void usercontrol(void) {
     Brain.Screen.print("auton");
 
   //drivetrain code
-    leftDrive.spin(directionType::fwd, (Controller.Axis3.value() + turnChanger(Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
-    rightDrive.spin(directionType::fwd, (Controller.Axis3.value() - turnChanger(Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
+    leftDrive.spin(directionType::fwd, (Controller.Axis3.value() + (Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
+    rightDrive.spin(directionType::fwd, (Controller.Axis3.value() - (Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
     
   //intake code 
     //intake press
     Controller.ButtonL1.pressed(intakeSpinFor);
     Controller.ButtonL1.released(intakeStop);
     //outtake press
-    Controller.ButtonDown.pressed(intakeSpinAga);
-    Controller.ButtonDown.released(intakeStop);
+    Controller.ButtonL2.pressed(intakeSpinAga); // used to be DOWN
+    Controller.ButtonL2.released(intakeStop); // used to be DOWN
     //clamp code
-    // Controller.ButtonL2.pressed(clamped);
-    Controller.ButtonL2.released(unclamped);
-    autoClamping();
+    //used to be L2
+    autoClamper::startAutoClamping();
     //doink code
     Controller.ButtonR1.pressed(doinked);
     Controller.ButtonR1.released(undoink);
