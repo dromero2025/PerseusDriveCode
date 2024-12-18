@@ -26,6 +26,7 @@ motor topRMotor = motor(PORT15, ratio6_1, true);//top right motor
 motor topLMotor = motor(PORT16, ratio6_1, false);//top left motor
 motor rLMotor = motor(PORT19, ratio6_1, false);//rear left drive motor
 motor rRMotor = motor(PORT14, ratio6_1, true);//rear right drive motor
+motor hSMotor = motor(PORT, ratio6_1,true)//High Steaks Motor
 
 inertial inert = inertial(PORT10);
 
@@ -50,6 +51,8 @@ motor_group drivetake = motor_group(fLMotor, rLMotor, topLMotor, fRMotor, rRMoto
 
 
 distance clamper = distance(PORT3);
+distance stakesSensor =  distance(PORT10);
+
 
 class PID{
  public:
@@ -275,6 +278,14 @@ bool Adown = false;
 pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
 pneumatics doink = pneumatics(Brain.ThreeWirePort.B);
 
+class mmtoinches{
+  Public:
+static float inches(float m){
+float x = m/25.4;
+return x;
+}
+}
+
 class unjammer{
   
   public:
@@ -335,6 +346,17 @@ class autoClamper{
 
 };
 
+//high steaks meathods
+class highStakes{
+  public:
+
+static void align(){
+float length = stakesSensor.objectDistance(distanceUnits::mm);
+float driveDis = 0
+driveDis = inches(lenght-x)
+moving.moveto(driveDis);
+}
+}
 
   //doink methods
 void doinked(){
