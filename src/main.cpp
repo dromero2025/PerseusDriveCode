@@ -329,7 +329,7 @@ void ladyDown(){
 }
 void ladyQuit(){
   ladyB.setStopping(brakeType::coast);
-  ladyB.spinTo(0, rotationUnits::deg, 30, velocityUnits::pct);
+  ladyB.spinTo(0, rotationUnits::deg, 6.5, velocityUnits::pct);
   ladyB.stop();
   ladyB.setStopping(brakeType::hold);
 }
@@ -347,7 +347,7 @@ void ladyQuit(){
 /*---------------------------------------------------------------------------*/
 
 void pre_auton(void) {
-  mogoClamp.set(true);
+  mogoClamp.set(false);
   drive.resetPosition();
   drive.setStopping(brakeType::brake);
   intake.resetPosition();
@@ -455,9 +455,9 @@ void autonomous(void){
     } else if(slotter == 2){
       moving.moveTo(-22);
       moving.moveTo(-6);
-      moving.moveTo(-6);
+      moving.moveTo(-5);
       //clamp goal and wait .25 sec then move back
-      mogoClamp.set(false);
+      mogoClamp.set(true);
       wait(250, timeUnits::msec);
       moving.moveTo(3);
       //put preload onto goal
