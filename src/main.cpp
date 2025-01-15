@@ -20,18 +20,24 @@ brain Brain;
 controller Controller = controller();
 
 //drivetrain initializations
-motor fLMotor = motor(PORT18, ratio6_1, false);//front left drive motor
-motor fRMotor = motor(PORT13, ratio6_1, true);//front right drive motor
-motor topRMotor = motor(PORT15, ratio6_1, true);//top right motor
-motor topLMotor = motor(PORT16, ratio6_1, false);//top left motor
-motor rLMotor = motor(PORT19, ratio6_1, false);//rear left drive motor
-motor rRMotor = motor(PORT14, ratio6_1, true);//rear right drive motor
+motor fRMotor = motor(PORT19, ratio6_1, false);//front right drive motor
+motor mRMotor = motor(PORT18, ratio6_1, false);//top right motor
+motor rRMotor = motor(PORT17, ratio6_1, true);//rear right drive motor
 
-inertial inert = inertial(PORT10);
+motor fLMotor = motor(PORT14, ratio6_1, false);//front left drive motor
+motor mLMotor = motor(PORT13, ratio6_1, true);//top left motor
+motor rLMotor = motor(PORT12, ratio6_1, true);//rear left drive motor
 
-motor_group leftDrive = motor_group(fLMotor, rLMotor, topLMotor);
-motor_group rightDrive = motor_group(fRMotor, rRMotor, topRMotor);
-motor_group drive = motor_group(fLMotor, rLMotor, topLMotor, fRMotor, rRMotor, topRMotor);
+inertial inert = inertial(PORT2);
+
+motor_group leftDrive = motor_group(fLMotor, rLMotor, mLMotor);
+motor_group rightDrive = motor_group(fRMotor, rRMotor, mRMotor);
+motor_group drive = motor_group(fLMotor, rLMotor, mLMotor, fRMotor, rRMotor, mRMotor);
+
+motor highL = motor(PORT20, ratio18_1, true); 
+motor highR = motor(PORT11, ratio18_1, false);
+motor_group ladyB = motor_group(highL, highR);
+
 
 float driveChanger = 1.0;
 
@@ -42,14 +48,11 @@ float turnChanger(float x){
 //smartdrive blackjack = smartdrive(leftDrive, rightDrive, inert, 12.57, 10.625, 9.5, inches, 2);
 
 //intake intializations
-motor hIntMotor = motor(PORT2, ratio18_1, true);
-motor lIntMotor = motor(PORT20, ratio6_1, true);
-
-motor_group intake = motor_group(hIntMotor, lIntMotor);
-motor_group drivetake = motor_group(fLMotor, rLMotor, topLMotor, fRMotor, rRMotor, topRMotor, hIntMotor, lIntMotor);
+motor intake = motor(PORT21, ratio6_1, true);
 
 
-distance clamper = distance(PORT3);
+optical colorSort = optical(PORT3);
+optical clamper = optical(PORT10);
 
 class PID{
  public:
@@ -103,14 +106,14 @@ class PID{
   }
   void moveTo(double target){
     int settle = 0;
-    motorEncoderLeft=fLMotor.position(degrees)*(3.25*M_PI)/360;
-    motorEncoderRight=fRMotor.position(degrees)*(3.25*M_PI)/360;
+    motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
+    motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
     errorL=target-motorEncoderLeft;
     errorR=target-motorEncoderRight;
     error=(errorL+errorR)/2;
     while(fabs(error)>0.1){
-      motorEncoderLeft=fLMotor.position(degrees)*(3.25*M_PI)/360;
-      motorEncoderRight=fRMotor.position(degrees)*(3.25*M_PI)/360;
+      motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
+      motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
       errorL=target-motorEncoderLeft;
       errorR=target-motorEncoderRight;
       error=(errorL+errorR)/2;
@@ -143,14 +146,6 @@ class PID{
 
 PID turning = PID(0.4, 0.0, 0.65);
 PID moving = PID(0.6, 0.0, 0.5);
-
-float mapTo180(float angle) {
-  return angle - 360 * (int(angle) / 180 - int(angle) / 360);
-}
-float mapTo360(float angle) {
-  return angle - 360 * (int(angle) / 360 + (angle < 0)) * ((angle >= 0) - (angle < 0));
-}
-
 
   enum VisionSignatures {
     mobileGoal,
@@ -275,28 +270,11 @@ bool Adown = false;
 pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
 pneumatics doink = pneumatics(Brain.ThreeWirePort.B);
 
-class unjammer{
-  
-  public:
-
-  static void unjam(){
-    int jamVar = 100;
-    int lowIntHighRange = lIntMotor.position(rotationUnits::deg) + jamVar;
-    int lowIntLowRange = lIntMotor.position(rotationUnits::deg) - jamVar;
-    int hIntVelocity = hIntMotor.position(rotationUnits::deg);
-
-    if(lowIntHighRange < hIntVelocity || lowIntLowRange > hIntVelocity){
-      intake.spinFor(directionType::rev, 500, timeUnits::msec);
-      intake.resetPosition();
-    }
-  }
-};
 //methods
   //intake methods
 void intakeSpinFor(){
-  intake.resetPosition();
-  //unjammer::unjam();
-  intake.spin(directionType::fwd, 100, velocityUnits::pct);
+    intake.spin(directionType::fwd, 100, velocityUnits::pct);
+
   //kamalaPrint();
 }
 void intakeSpinAga(){
@@ -316,19 +294,21 @@ class autoClamper{
   public:
 
     static void stopAutoClamping(){
-      mogoClamp.set(true);
+      mogoClamp.set(false);
     }
   
   static void startAutoClamping(){
-    float dist = clamper.objectDistance(distanceUnits::mm);
+    double hue = clamper.hue();
+    bool near = clamper.isNearObject();
 
     if(Controller.ButtonR2.pressing() == true){
       stopAutoClamping();
     } else {
-      if(dist <= 25){
-        mogoClamp.set(false);
-      } else {
+      if(hue > 50 && hue < 68 && near){
         mogoClamp.set(true);
+        wait(50, timeUnits::msec);
+      } else {
+        mogoClamp.set(false);
       }
     }
   }
@@ -337,18 +317,21 @@ class autoClamper{
 
 
   //doink methods
-void doinked(){
-  //mogoClamp.set(true);
-  
-  if(Adown == false){
-    doink.set(doinker);
-    doinker = !doinker;
-  }
-  //xylo1Print();
-  Adown = true;
+void ladyStop(){
+  ladyB.stop();
 }
-void undoink(){
-  Adown = false;
+void ladyUp(){
+  ladyB.spinToPosition(-50, rotationUnits::deg, 30, velocityUnits::pct);
+  ladyStop();
+}
+void ladyDown(){
+  ladyB.spinToPosition(-200, rotationUnits::deg, 30, velocityUnits::pct);
+}
+void ladyQuit(){
+  ladyB.setStopping(brakeType::coast);
+  ladyB.spinTo(0, rotationUnits::deg, 30, velocityUnits::pct);
+  ladyB.stop();
+  ladyB.setStopping(brakeType::hold);
 }
 
 
@@ -369,6 +352,11 @@ void pre_auton(void) {
   drive.setStopping(brakeType::brake);
   intake.resetPosition();
   inert.calibrate();
+  ladyB.setStopping(brakeType::hold);
+  clamper.setLight(ledState::on);
+  clamper.setLightPower(100, percent);
+  colorSort.setLight(ledState::on);
+  colorSort.setLightPower(100, percent);
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
@@ -576,8 +564,9 @@ void usercontrol(void) {
     //used to be L2
     autoClamper::startAutoClamping();
     //doink code
-    Controller.ButtonR1.pressed(doinked);
-    Controller.ButtonR1.released(undoink);
+    Controller.ButtonR1.pressed(ladyUp);
+    Controller.ButtonY.pressed(ladyDown);
+    Controller.ButtonB.pressed(ladyQuit);
     //avgTemp();
 
     wait(20, msec); // Sleep the task for a short amount of time to
