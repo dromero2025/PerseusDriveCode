@@ -405,7 +405,7 @@ void autonomous(void){
   drive.resetPosition();
   
 
-  int slotter = 2;
+  int slotter = 5;
     //EXPERIEMENTAL AUTON WITH AI-BASED PID
     if(slotter == 0){
 
@@ -498,7 +498,6 @@ void autonomous(void){
 
     } else if (slotter == 4){
       //drive towards goal, then slowly back into it
-      autoClamper::startAutoClamping;
       moving.moveTo(-22);
       moving.moveTo(-6);
       moving.moveTo(-6);
@@ -526,7 +525,37 @@ void autonomous(void){
       turning.turnTo(90);
       moving.moveTo(36);
       //win point two ring
+    } else if (slotter == 5){
+      moving.moveTo(-11);
+      moving.moveTo(-11);
+      moving.moveTo(-4);
+      mogoClamp.set(true);
+      moving.moveTo(-8);
+      //clamp goal and wait .25 sec then move back
+      //put preload onto goal
+      intake.spin(directionType::fwd);
+      wait(100, msec);
+      //turn to two ring stack
+      turning.turnTo(-90);
+      wait(25, msec);
+      //intake bottom of two ring stack
+      moving.moveTo(16);
+      moving.moveTo(11);
+      wait(200, msec);
+      moving.moveTo(-7);
+      turning.turnTo(-180);
+      moving.moveTo(13);
+      wait(250, msec);
+      turning.turnTo(-160);
+      moving.moveTo(-13);
+      
+      //WORKS
+      /*
+      Drives forward, puts ring, turns, intakes ring
+      */
+
     }
+
 
   
 }
