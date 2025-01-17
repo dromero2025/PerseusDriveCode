@@ -329,7 +329,7 @@ void ladyDown(){
 }
 void ladyQuit(){
   ladyB.setStopping(brakeType::coast);
-  ladyB.spinTo(0, rotationUnits::deg, 6.5, velocityUnits::pct);
+  ladyB.spinTo(0, rotationUnits::deg, 2.5, velocityUnits::pct);
   ladyB.stop();
   ladyB.setStopping(brakeType::hold);
 }
@@ -347,11 +347,14 @@ void ladyQuit(){
 /*---------------------------------------------------------------------------*/
 
 void pre_auton(void) {
+  intake.setVelocity(100,velocityUnits::pct);
   mogoClamp.set(false);
   drive.resetPosition();
   drive.setStopping(brakeType::brake);
   intake.resetPosition();
+
   inert.calibrate();
+
   ladyB.setStopping(brakeType::hold);
   clamper.setLight(ledState::on);
   clamper.setLightPower(100, percent);
@@ -397,135 +400,22 @@ void pre_auton(void) {
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void){ 
-
-  inert.calibrate();
-
-  windshield.modelDetection(true);
-  intake.setVelocity(100,velocityUnits::pct);
-  drive.resetPosition();
-  
-
-  int slotter = 5;
+  int slotter = 0;
     //EXPERIEMENTAL AUTON WITH AI-BASED PID
     if(slotter == 0){
 
-    } else if(slotter == 1){ //four ring side master auton
-      //drive towards goal, then slowly back into it
-      autoClamper::startAutoClamping;
-      moving.moveTo(-22);
-      moving.moveTo(-6);
-      moving.moveTo(-6);
-      //clamp goal and wait .25 sec then move back
-      mogoClamp.set(false);
-      wait(250, timeUnits::msec);
-      moving.moveTo(3);
-      //put preload onto goal
       intake.spin(directionType::fwd);
-      //turn to two ring stack
-      wait(750, msec);
-      turning.turnTo(-90);
-      wait(750, timeUnits::msec);
-      //intake bottom of two ring stack
-      moving.moveTo(18);
-      moving.moveTo(11);
-      wait(500, timeUnits::msec);
-      moving.moveTo(5);
-      //DONE FINISHED
-
-
-      wait(1000, timeUnits::msec);
-      //move back and turn towards four rings
-      moving.moveTo(-8);
-      turning.turnTo(-170);
-      //turn towards left ring
-      //intake left ring
-      moving.moveTo(15);
-      wait(500, timeUnits::msec);
-      moving.moveTo(-18);
-      turning.turnTo(-180);
-
-      //turn towards right ring
-      //turning.turnTo(-177.5);
-      //intake right ring
-      moving.moveTo(20);
-      moving.moveTo(-20);
-      //turn around
-      intake.stop();
-
-    } else if(slotter == 2){
-      moving.moveTo(-22);
-      moving.moveTo(-6);
-      moving.moveTo(-5);
-      //clamp goal and wait .25 sec then move back
-      mogoClamp.set(true);
-      wait(250, timeUnits::msec);
-      moving.moveTo(3);
-      //put preload onto goal
-      intake.spin(directionType::fwd);
-      //turn to two ring stack
-      wait(250, msec);
-      turning.turnTo(-90);
-      mogoClamp.set(true);
-      wait(750, timeUnits::msec);
-      //intake bottom of two ring stack
-      moving.moveTo(18);
-      moving.moveTo(11);
-      wait(125, timeUnits::msec);
-      intake.stop();
-      moving.moveTo(5);
-      moving.moveTo(-8);
-      turning.turnTo(0);
-      moving.moveTo(-17);
-      moving.moveTo(-6);
-      mogoClamp.set(false);
+      wait(500, msec);
       moving.moveTo(6);
-      intake.spin(directionType::fwd);
-
-    } else if(slotter == 3){
-      intake.spinFor(directionType::fwd, 1, timeUnits::sec);
-      moving.moveTo(12);
       turning.turnTo(90);
-      moving.moveTo(-12);
-      moving.moveTo(-4);
-      mogoClamp.set(false);
-      moving.moveTo(-8);
-      turning.turnTo(0);
-      wait(250, timeUnits::msec);
-      intake.spin(directionType::fwd);
-      moving.moveTo(22);
-      turning.turnTo(-90);
-      moving.moveTo(30);
-
-    } else if (slotter == 4){
-      //drive towards goal, then slowly back into it
-      moving.moveTo(-22);
       moving.moveTo(-6);
       moving.moveTo(-6);
-      //clamp goal and wait .25 sec then move back
-      mogoClamp.set(false);
-      wait(250, timeUnits::msec);
-      moving.moveTo(3);
-      //put preload onto goal
-      intake.spin(directionType::fwd);
-      //turn to two ring stack
-      wait(750, msec);
-      turning.turnTo(-90);
-      wait(750, timeUnits::msec);
-      //intake bottom of two ring stack
-      moving.moveTo(18);
-      moving.moveTo(11);
-      wait(500, timeUnits::msec);
-      moving.moveTo(5);
-      //DONE FINISHED
-
       mogoClamp.set(true);
-      intake.stop();
-      turning.turnTo(135);
+      turning.turnTo(-90);
+      intake.spin(directionType::fwd);
       moving.moveTo(24);
-      turning.turnTo(90);
-      moving.moveTo(36);
-      //win point two ring
-    } else if (slotter == 5){
+
+    } else if(slotter == 1){ //four ring side master auton
       moving.moveTo(-11);
       moving.moveTo(-11);
       moving.moveTo(-4);
@@ -548,13 +438,7 @@ void autonomous(void){
       wait(250, msec);
       turning.turnTo(-160);
       moving.moveTo(-13);
-      
-      //WORKS
-      /*
-      Drives forward, puts ring, turns, intakes ring
-      */
-
-    }
+    } 
 
 
   
