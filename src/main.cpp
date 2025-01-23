@@ -8,6 +8,7 @@
 /*----------------------------------------------------------------------------*/
 
 #include "vex.h"
+#include "math.h"
 
 
 using namespace vex;
@@ -54,6 +55,10 @@ motor intake = motor(PORT21, ratio6_1, true);
 optical colorSort = optical(PORT3);
 optical clamper = optical(PORT10);
 
+double iTD(double i){
+  return i/((2.75*M_PI)/360);
+}
+
 class PID{
  public:
    double inertVal=0.0;
@@ -69,6 +74,22 @@ class PID{
    double derivative=0.0;
    double prevError=0.0;
    double output=0.0;
+
+   double initialHeading = 0.0;
+   double currentHeading = 0.0;
+   double hErrorL = 0.0;
+   double hErrorR = 0.0;
+   double rOutput = 0.0;
+   double lOutput = 0.0;
+
+   double p0 = 0.0;
+   double p1 = 0.0;
+   double p2 = 0.0;
+   double p3 = 0.0;
+
+   double leadIn = 0.5;
+
+   double leadOut = 0.5;
 
   PID(){}
   PID(double kP, double kI, double kD){
@@ -96,7 +117,7 @@ class PID{
       if(error<5&&error>(-5)){
         settle++;
       }
-      if(settle>50){
+      if(settle>80){
         error=0;
         leftDrive.stop();
         rightDrive.stop();
@@ -105,17 +126,36 @@ class PID{
     }
   }
   void moveTo(double target){
+    drive.resetPosition();
+
     int settle = 0;
     motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
     motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
-    errorL=target-motorEncoderLeft;
-    errorR=target-motorEncoderRight;
+
+    initialHeading = inert.rotation();
+    currentHeading = inert.rotation();
+
+    hErrorL = -1 * (initialHeading - currentHeading);
+    hErrorR = initialHeading - currentHeading;
+
+    errorL=target-motorEncoderLeft + hErrorL;
+    errorR=target-motorEncoderRight + hErrorR;
+
     error=(errorL+errorR)/2;
     while(fabs(error)>0.1){
       motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
       motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
+
+      currentHeading = inert.rotation();
+
+      // hErrorL = -2 * (initialHeading - currentHeading);
+      // hErrorR = 2 * (initialHeading - currentHeading);
+      hErrorL = 0;
+      hErrorR = 0;
+
       errorL=target-motorEncoderLeft;
       errorR=target-motorEncoderRight;
+
       error=(errorL+errorR)/2;
       integral=integral+error;
       // if(error==0 range){
@@ -123,14 +163,22 @@ class PID{
       // } implement fastest route
       derivative=error-prevError;
       prevError=error;
-      output=error*kP+integral*kI+derivative*kD;
-      leftDrive.spin(forward, output, volt);
+      output=error*kP+integral*kI+derivative*kD * .8;
+      lOutput=error*kP+integral*kI+derivative*kD;
+
+      // rOutput = errorR*kP+integral*kI+derivative*kD;
+      // lOutput = errorL*kP+integral*kI+derivative*kD;
+      // leftDrive.spin(forward, lOutput, volt);
+      // rightDrive.spin(forward, rOutput, volt);
+      leftDrive.spin(forward, lOutput, volt);
       rightDrive.spin(forward, output, volt);
       printf("moveto: %f \n",error);
-      if(error<5 && error>(-5)){
+      // printf("left: %f \n", hErrorL);
+      // printf("right: %f \n", hErrorR);
+      if(error<1 && error>(-1)){
         settle++;
       }
-      if(settle>50){
+      if(settle>300){
         error=0;
         leftDrive.stop();
         rightDrive.stop();
@@ -139,13 +187,29 @@ class PID{
       }
             wait(10,msec);
     }
+
+  //   p3 = target;
+  //   p1 = target * leadIn;
+  //   p2 = target - (target * leadOut);
+
+
+  //   for (double t=0;t<1;t+=(1.0/30)){
+
+	// //println t
+	//     double x = pow((1.0-t),3) * p0 +3 * pow((1-t),2) * t * p1+3 * (1-t) * pow(t,2) * p2 + pow(t,3) * p3;
+
+  //     drive.spinToPosition(x, vex::rotationUnits::deg, 100, vex::velocityUnits::pct);
+
+  //     wait(10, msec);
+
+  //   }
     leftDrive.resetPosition();
     rightDrive.resetPosition();
   }
 };
 
 PID turning = PID(0.4, 0.0, 0.65);
-PID moving = PID(0.6, 0.0, 0.5);
+PID moving = PID(0.4, 0.0, 0.65);
 
   enum VisionSignatures {
     mobileGoal,
@@ -400,20 +464,28 @@ void pre_auton(void) {
 /*---------------------------------------------------------------------------*/
 
 void autonomous(void){ 
-  int slotter = 0;
+  drive.resetPosition();
+  int slotter = 10;
     //EXPERIEMENTAL AUTON WITH AI-BASED PID
     if(slotter == 0){
-
+  
       intake.spin(directionType::fwd);
       wait(500, msec);
-      moving.moveTo(6);
+      moving.moveTo(11);
       turning.turnTo(90);
-      moving.moveTo(-6);
-      moving.moveTo(-6);
+      moving.moveTo(-8);
+      moving.moveTo(-9);
       mogoClamp.set(true);
+      wait(50, msec);
       turning.turnTo(-90);
       intake.spin(directionType::fwd);
-      moving.moveTo(24);
+      moving.moveTo(8);
+      moving.moveTo(8);
+      moving.moveTo(8);
+      moving.moveTo(8);
+      moving.moveTo(12);
+      wait(50, msec);
+
 
     } else if(slotter == 1){ //four ring side master auton
       moving.moveTo(-11);
@@ -438,7 +510,11 @@ void autonomous(void){
       wait(250, msec);
       turning.turnTo(-160);
       moving.moveTo(-13);
-    } 
+    } else if(slotter == 10){
+
+      moving.moveTo(-24);
+
+    }
 
 
   
