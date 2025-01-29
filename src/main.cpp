@@ -54,10 +54,67 @@ motor intake = motor(PORT21, ratio6_1, true);
 
 optical colorSort = optical(PORT3);
 optical clamper = optical(PORT10);
+distance clampLeft = distance(PORT15);
+distance clampRight = distance(PORT16);
+//clamp initializations
+bool doinker = false;
+bool Adown = false;
+pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
+pneumatics doink = pneumatics(Brain.ThreeWirePort.B);
 
 double iTD(double i){
   return i/((2.75*M_PI)/360);
 }
+
+//clamp methods
+bool stopClamp = false;
+class autoClamper{
+  public:
+    
+  
+
+    static void stopAutoClamping(){
+      stopClamp = true;
+    }
+    static void startAutoClamping(){
+      stopClamp = false;
+    }
+
+  
+  static task AutoClamping(){
+    while(true){
+      double lDist = clampLeft.objectDistance(distanceUnits::mm);
+      double rDist = clampRight.objectDistance(distanceUnits::mm);
+      double dist = (lDist + rDist)/2;
+      double hue = clamper.hue();
+      
+      //printf("auto clamp intitated");
+      printf("right distance: %f", rDist);
+      printf(" left distance: %f \n", lDist);
+      printf("hue: %f \n", hue);
+
+      if(stopClamp == true){
+        mogoClamp.set(false);
+      } else if(stopClamp == false){
+        if(hue > 50 && hue < 68 && dist <= 77 && (lDist <= 77 && rDist <= 77)){
+          
+            mogoClamp.set(true);
+            printf("right distance: %f", rDist);
+            printf(" left distance: %f \n", lDist);
+            printf("hue: %f \n", hue);
+            
+
+          
+        } 
+      } else {
+        mogoClamp.set(false);
+      }
+      wait(10, timeUnits::msec);
+    }
+    
+    return 0;
+  }
+};
 
 class PID{
  public:
@@ -75,150 +132,95 @@ class PID{
    double prevError=0.0;
    double output=0.0;
 
-   double initialHeading = 0.0;
-   double currentHeading = 0.0;
-   double hErrorL = 0.0;
-   double hErrorR = 0.0;
-   double rOutput = 0.0;
-   double lOutput = 0.0;
+   PID(){
+   }
+   PID(double kP, double kI, double kD){
+     this->kP=kP;
+     this->kI=kI;
+     this->kD=kD;
+   }
+   void turnTo(double target){
+      
+     int settle = 0;
+     inertVal=inert.rotation(degrees);
+     error=target-inertVal;
+     while(fabs(error)>0.1){
+      
+       inertVal=inert.rotation(degrees);
+       error=target-inertVal;
+       integral=integral+error;
+       // if(error==0 range){
+       //   integral=0;
+       // } implement fastest route
+       derivative=error-prevError;
+       prevError=error;
+       output=error*kP+integral*kI+derivative*kD;
+       leftDrive.spin(forward, output, volt);
+       rightDrive.spin(reverse, output, volt);
+       printf("turnto %f \n",error);
+       if(error<10&&error>(-10)){
+         settle++;
+       }
+       if(settle>50){
+         error=0;
+         leftDrive.stop();
+         rightDrive.stop();
+       }
+       wait(10,msec);
+     }
+     
+   }
 
-   double p0 = 0.0;
-   double p1 = 0.0;
-   double p2 = 0.0;
-   double p3 = 0.0;
-
-   double leadIn = 0.5;
-
-   double leadOut = 0.5;
-
-  PID(){}
-  PID(double kP, double kI, double kD){
-    this->kP=kP;
-    this->kI=kI;
-    this->kD=kD;
-  }
-  void turnTo(double target){
-    int settle = 0;
-    inertVal=inert.rotation(degrees);
-    error=target-inertVal;
-    while(fabs(error)>0.1){
-      inertVal=inert.rotation(degrees);
-      error=target-inertVal;
-      integral=integral+error;
-      // if(error==0 range){
-      //   integral=0;
-      // } implement fastest route
-      derivative=error-prevError;
-      prevError=error;
-      output=error*kP+integral*kI+derivative*kD;
-      leftDrive.spin(forward, output, volt);
-      rightDrive.spin(reverse, output, volt);
-      printf("turnto %f \n",error);
-      if(error<5&&error>(-5)){
-        settle++;
-      }
-      if(settle>80){
-        error=0;
-        leftDrive.stop();
-        rightDrive.stop();
-      }
-      wait(50,msec);
-    }
-  }
-  void moveTo(double target){
-    drive.resetPosition();
-
-    int settle = 0;
-    motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
-    motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
-
-    initialHeading = inert.rotation();
-    currentHeading = inert.rotation();
-
-    hErrorL = -1 * (initialHeading - currentHeading);
-    hErrorR = initialHeading - currentHeading;
-
-    errorL=target-motorEncoderLeft + hErrorL;
-    errorR=target-motorEncoderRight + hErrorR;
-
-    error=(errorL+errorR)/2;
-    while(fabs(error)>0.1){
-      motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
-      motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
-
-      currentHeading = inert.rotation();
-
-      // hErrorL = -2 * (initialHeading - currentHeading);
-      // hErrorR = 2 * (initialHeading - currentHeading);
-      hErrorL = 0;
-      hErrorR = 0;
-
-      errorL=target-motorEncoderLeft;
-      errorR=target-motorEncoderRight;
-
-      error=(errorL+errorR)/2;
-      integral=integral+error;
-      // if(error==0 range){
-      //   integral=0;
-      // } implement fastest route
-      derivative=error-prevError;
-      prevError=error;
-      output=error*kP+integral*kI+derivative*kD * .8;
-      lOutput=error*kP+integral*kI+derivative*kD;
-
-      // rOutput = errorR*kP+integral*kI+derivative*kD;
-      // lOutput = errorL*kP+integral*kI+derivative*kD;
-      // leftDrive.spin(forward, lOutput, volt);
-      // rightDrive.spin(forward, rOutput, volt);
-      leftDrive.spin(forward, lOutput, volt);
-      rightDrive.spin(forward, output, volt);
-      printf("moveto: %f \n",error);
-      // printf("left: %f \n", hErrorL);
-      // printf("right: %f \n", hErrorR);
-      if(error<1 && error>(-1)){
-        settle++;
-      }
-      if(settle>300){
-        error=0;
-        leftDrive.stop();
-        rightDrive.stop();
-        leftDrive.resetPosition();
-        rightDrive.resetPosition();
-      }
-            wait(10,msec);
-    }
-
-  //   p3 = target;
-  //   p1 = target * leadIn;
-  //   p2 = target - (target * leadOut);
-
-
-  //   for (double t=0;t<1;t+=(1.0/30)){
-
-	// //println t
-	//     double x = pow((1.0-t),3) * p0 +3 * pow((1-t),2) * t * p1+3 * (1-t) * pow(t,2) * p2 + pow(t,3) * p3;
-
-  //     drive.spinToPosition(x, vex::rotationUnits::deg, 100, vex::velocityUnits::pct);
-
-  //     wait(10, msec);
-
-  //   }
-    leftDrive.resetPosition();
-    rightDrive.resetPosition();
-  }
+   void moveTo(double target){
+      
+     int settle = 0;
+     motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
+     motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
+     errorL=target-motorEncoderLeft;
+     errorR=target-motorEncoderRight;
+     error=(errorL+errorR)/2;
+     while(fabs(error)>0.1){
+      
+       motorEncoderLeft=fLMotor.position(degrees)*(2.75*M_PI)/360;
+       motorEncoderRight=fRMotor.position(degrees)*(2.75*M_PI)/360;
+       errorL=target-motorEncoderLeft;
+       errorR=target-motorEncoderRight;
+       error=(errorL+errorR)/2;
+       integral=integral+error;
+       // if(error==0 range){
+       //   integral=0;
+       // } implement fastest route
+       derivative=error-prevError;
+       prevError=error;
+       output=error*kP+integral*kI+derivative*kD;
+       leftDrive.spin(forward, output, volt);
+       rightDrive.spin(forward, output, volt);
+       printf("moveto: %f \n",error);
+       if(error<5&&error>(-5)){
+         settle++;
+       }
+       if(settle>50){
+         error=0;
+         leftDrive.stop();
+         rightDrive.stop();
+         leftDrive.resetPosition();
+         rightDrive.resetPosition();
+       }
+       wait(10,msec);
+     }
+     leftDrive.resetPosition();
+     rightDrive.resetPosition();
+   }
 };
-
-PID turning = PID(0.4, 0.0, 0.65);
-PID moving = PID(0.4, 0.0, 0.65);
+PID turning = PID(0.17, 0.0, 0);
+PID moving = PID(0.4, 0.0, 0);
 
   enum VisionSignatures {
-    mobileGoal,
     redRing,
     blueRing
   };
 
   // all object descriptions for game elements
-  aivision::aiobjdesc mobileGoalObj = aivision::aiobjdesc(VisionSignatures::mobileGoal);
   aivision::aiobjdesc redRingObj = aivision::aiobjdesc(VisionSignatures::redRing);
   aivision::aiobjdesc blueRingObj = aivision::aiobjdesc(VisionSignatures::blueRing);
 
@@ -264,7 +266,7 @@ class aivisionUtil{
 
   aiVisionObjectWrapper getClosest(aivision::objdesc target){
     aiVisionObjectWrapper returner;
-    windshield.takeSnapshot(target, 8);
+    windshield.takeSnapshot(target, 2);
 
       if(windshield.objectCount == 0){
         returner.exists = false; 
@@ -302,37 +304,9 @@ class aivisionUtil{
     }
 
   } 
-  bool aiDistance(aivision::objdesc target){
-    aiVisionObjectWrapper close = getClosest(target);
-
-
-    bool truing = aiCenter(target);
-    
-    if(truing == false){
-      return false;
-    } else {
-      int objWidth = close.object.width;
-
-      float alphaOne = objWidth/(xRes * aiXFov);
-      float zHigh = (objWidth/2)/(tan(alphaOne/2));
-
-      float zTrue = sqrt(pow(zHigh, 2) - pow(camHeight, 2));
-
-      moving.moveTo(zTrue);
-
-      return true;
-    }
-
-  } 
 };
 
 aivisionUtil windshieldUtil = aivisionUtil(74, 63, 320, 240, 10.5);
-
-//clamp initializations
-bool doinker = false;
-bool Adown = false;
-pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
-pneumatics doink = pneumatics(Brain.ThreeWirePort.B);
 
 //methods
   //intake methods
@@ -352,40 +326,12 @@ void intakeStop(){
 
 bool releaser = false;
 
-//clamp methods
-class autoClamper{
-
-  public:
-
-    static void stopAutoClamping(){
-      mogoClamp.set(false);
-    }
-  
-  static void startAutoClamping(){
-    double hue = clamper.hue();
-    bool near = clamper.isNearObject();
-
-    if(Controller.ButtonR2.pressing() == true){
-      stopAutoClamping();
-    } else {
-      if(hue > 50 && hue < 68 && near){
-        mogoClamp.set(true);
-        wait(50, timeUnits::msec);
-      } else {
-        mogoClamp.set(false);
-      }
-    }
-  }
-
-};
-
-
   //doink methods
 void ladyStop(){
   ladyB.stop();
 }
 void ladyUp(){
-  ladyB.spinToPosition(-50, rotationUnits::deg, 30, velocityUnits::pct);
+  ladyB.spinToPosition(-44, rotationUnits::deg, 30, velocityUnits::pct);
   ladyStop();
 }
 void ladyDown(){
@@ -414,16 +360,20 @@ void pre_auton(void) {
   intake.setVelocity(100,velocityUnits::pct);
   mogoClamp.set(false);
   drive.resetPosition();
-  drive.setStopping(brakeType::brake);
   intake.resetPosition();
 
   inert.calibrate();
 
+  while(inert.isCalibrating()){
+    wait(100,msec);
+  }
   ladyB.setStopping(brakeType::hold);
   clamper.setLight(ledState::on);
   clamper.setLightPower(100, percent);
   colorSort.setLight(ledState::on);
   colorSort.setLightPower(100, percent);
+
+  task controlTask(autoClamper::AutoClamping());
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
@@ -465,59 +415,96 @@ void pre_auton(void) {
 
 void autonomous(void){ 
   drive.resetPosition();
-  int slotter = 10;
+  intake.resetPosition();
+  while(true){
+    //autoClamper::AutoClamping();
     //EXPERIEMENTAL AUTON WITH AI-BASED PID
-    if(slotter == 0){
-  
-      intake.spin(directionType::fwd);
-      wait(500, msec);
-      moving.moveTo(11);
-      turning.turnTo(90);
-      moving.moveTo(-8);
-      moving.moveTo(-9);
-      mogoClamp.set(true);
-      wait(50, msec);
-      turning.turnTo(-90);
-      intake.spin(directionType::fwd);
-      moving.moveTo(8);
-      moving.moveTo(8);
-      moving.moveTo(8);
-      moving.moveTo(8);
-      moving.moveTo(12);
-      wait(50, msec);
+    // if(slotter == 0){
+      
+      
+        intake.spinToPosition(240, rotationUnits::deg, true);
+        moving.moveTo(13);
+        turning.turnTo(90);
+        moving.moveTo(-20);
+        wait(200, msec);
+        moving.moveTo(-8);
+        //autoClamper::AutoClamping();
+        //mogoClamp.set(true);
 
+        wait(300,msec);
+        turning.turnTo(0);
+        wait(100, msec);
+        intake.spin(directionType::fwd);
+        moving.moveTo(28);
+        wait(400, msec);
+        turning.turnTo(-90);
+        wait(300, msec);
+        moving.moveTo(11);
+        wait(600, msec);
+        moving.moveTo(12);
+        wait(200, msec);
+        turning.turnTo(-180);
+        wait(100, msec);
+        moving.moveTo(22);
+        wait(1000, msec);
+        moving.moveTo(12);
+        wait(500, msec);
+        moving.moveTo(-10);
+        turning.turnTo(-90);
+        wait(100, msec);
+        moving.moveTo(24);
+        wait(300, msec);
+        moving.moveTo(-4);
+        turning.turnTo(0);
+        wait(100, msec);
 
-    } else if(slotter == 1){ //four ring side master auton
-      moving.moveTo(-11);
-      moving.moveTo(-11);
-      moving.moveTo(-4);
-      mogoClamp.set(true);
-      moving.moveTo(-8);
-      //clamp goal and wait .25 sec then move back
-      //put preload onto goal
-      intake.spin(directionType::fwd);
-      wait(100, msec);
-      //turn to two ring stack
-      turning.turnTo(-90);
-      wait(25, msec);
-      //intake bottom of two ring stack
-      moving.moveTo(16);
-      moving.moveTo(11);
-      wait(200, msec);
-      moving.moveTo(-7);
-      turning.turnTo(-180);
-      moving.moveTo(13);
-      wait(250, msec);
-      turning.turnTo(-160);
-      moving.moveTo(-13);
-    } else if(slotter == 10){
+        autoClamper::stopAutoClamping();
+        //mogoClamp.set(false);
+        autoClamper::startAutoClamping();
 
-      moving.moveTo(-24);
+        moving.moveTo(-4);
+        moving.moveTo(4);
 
-    }
+        
 
+        
 
-  
+        
+      
+    // } else if(slotter == 1){ //four ring side master auton
+    //   moving.moveTo(-13);
+    //   moving.moveTo(-13);
+      
+    //   mogoClamp.set(true);
+    //   moving.moveTo(-8);
+    //   //clamp goal and wait .25 sec then move back
+    //   //put preload onto goal
+    //   intake.spin(directionType::fwd);
+    //   wait(100, msec);
+    //   //turn to two ring stack
+    //   turning.turnTo(-90);
+    //   wait(25, msec);
+    //   //intake bottom of two ring stack
+    //   moving.moveTo(13);
+    //   moving.moveTo(11);
+    //   wait(200, msec);
+    //   moving.moveTo(-5);
+    //   turning.turnTo(-180);
+    //   moving.moveTo(13);
+    //   wait(250, msec);
+    //   turning.turnTo(-160);
+    //   moving.moveTo(-13);
+    // } else if(slotter == 10){
+    //     autoClamper::AutoClamping();
+    //     //moving.moveTo(-24);
+    //     // wait(3, sec);
+        
+    //     slotter = 100;
+    // }
+
+    
+    
+  }
 }
 
 
@@ -551,7 +538,12 @@ void usercontrol(void) {
     Controller.ButtonL2.released(intakeStop); // used to be DOWN
     //clamp code
     //used to be L2
-    autoClamper::startAutoClamping();
+    //autoClamper::AutoClamping();
+    if(Controller.ButtonR2.pressing()){
+      autoClamper::stopAutoClamping();
+    } else {
+      autoClamper::startAutoClamping();
+    }
     //doink code
     Controller.ButtonR1.pressed(ladyUp);
     Controller.ButtonY.pressed(ladyDown);
