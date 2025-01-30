@@ -62,12 +62,28 @@ bool Adown = false;
 pneumatics mogoClamp = pneumatics(Brain.ThreeWirePort.A);
 pneumatics doink = pneumatics(Brain.ThreeWirePort.B);
 
+rotation highStake = rotation(PORT9);
+
 double iTD(double i){
   return i/((2.75*M_PI)/360);
+}
+void intakeSpinFor(){
+    intake.spin(directionType::fwd, 100, velocityUnits::pct);
+
+  //kamalaPrint();
+}
+void intakeSpinAga(){
+  intake.spin(directionType::rev, 100, velocityUnits::pct);
+  //kamalaPrint();
+}
+void intakeStop(){
+
+  intake.stop();
 }
 
 //clamp methods
 bool stopClamp = false;
+int clampDist = 65;
 class autoClamper{
   public:
     
@@ -96,7 +112,7 @@ class autoClamper{
       if(stopClamp == true){
         mogoClamp.set(false);
       } else if(stopClamp == false){
-        if(hue > 50 && hue < 68 && dist <= 77 && (lDist <= 77 && rDist <= 77)){
+        if(dist <= clampDist && (lDist <= clampDist && rDist <= clampDist)){
           
             mogoClamp.set(true);
             printf("right distance: %f", rDist);
@@ -115,7 +131,62 @@ class autoClamper{
     return 0;
   }
 };
+bool isBlue = false;
+bool isRed = true;
+int hue = colorSort.hue();
+class colorSorter{
+  
+  public: 
 
+  static void allowBlue(){
+    isBlue = true;
+  }
+  static void stopAllowBlue(){
+    isBlue = false;
+  }
+  static void allowRed(){
+    isRed = true;
+  }
+  static void stopAllowRed(){
+    isRed = false;
+  }
+  
+  static void colorSorting(){
+    //while(true){
+      
+      if(isBlue = false){
+        if(colorSort.hue() <= 220 && colorSort.hue() >= 170){
+          Brain.Screen.clearLine();
+          Brain.Screen.print("get that blue ring outta here");
+          wait(20, msec);
+          intake.resetPosition();
+          intake.spinToPosition(720, rotationUnits::deg, true);
+          intake.setStopping(brakeType::brake);
+          intake.stop();
+          wait(2000, msec);
+        }
+      } else if(isRed = false){
+        if(colorSort.hue() <= 15 && colorSort.hue() >= 8){
+          Brain.Screen.clearLine();
+          Brain.Screen.print("get that red ring outta here");
+          wait(20, msec);
+          intake.resetPosition();
+          intake.spinToPosition(720, rotationUnits::deg, true);
+          intake.setStopping(brakeType::brake);
+          intake.stop();
+          wait(2000, msec);
+        }
+      } else {
+        Controller.ButtonL1.pressed(intakeSpinFor);
+        Controller.ButtonL1.released(intakeStop);
+        //outtake press
+        Controller.ButtonL2.pressed(intakeSpinAga); // used to be DOWN
+        Controller.ButtonL2.released(intakeStop); // used to be DOWN
+      }
+
+    //}
+  }
+};
 class PID{
  public:
    double inertVal=0.0;
@@ -310,40 +381,66 @@ aivisionUtil windshieldUtil = aivisionUtil(74, 63, 320, 240, 10.5);
 
 //methods
   //intake methods
-void intakeSpinFor(){
-    intake.spin(directionType::fwd, 100, velocityUnits::pct);
-
-  //kamalaPrint();
-}
-void intakeSpinAga(){
-  intake.spin(directionType::rev, 100, velocityUnits::pct);
-  //kamalaPrint();
-}
-void intakeStop(){
-
-  intake.stop();
-}
 
 bool releaser = false;
 
   //doink methods
-void ladyStop(){
-  ladyB.stop();
-}
+bool loaded = false;
+bool scoring = false;
+int loadDeg = 320;
+int scoreDeg = 260;
+int highStakeError = 2;
 void ladyUp(){
-  ladyB.spinToPosition(-44, rotationUnits::deg, 30, velocityUnits::pct);
-  ladyStop();
-}
-void ladyDown(){
-  ladyB.spinToPosition(-200, rotationUnits::deg, 30, velocityUnits::pct);
+  if(loaded == true){
+    if(scoring == true){
+      ladyB.spinToPosition(-55, rotationUnits::deg, 15, velocityUnits::pct);
+      ladyB.setStopping(brakeType::hold);
+      ladyB.stop();
+      Brain.Screen.clearLine();
+      Brain.Screen.print("lady brown loaded");
+      scoring = false;
+    } else if (scoring == false){
+      ladyB.spinToPosition(-180, rotationUnits::deg, 60, velocityUnits::pct);
+      ladyB.setStopping(brakeType::hold);
+      ladyB.stop();
+      Brain.Screen.clearLine();
+      Brain.Screen.print("lady brown scoring");
+      scoring = true;
+    }
+  } else {
+    ladyB.spinToPosition(-53, rotationUnits::deg, 10, velocityUnits::pct);
+    ladyB.setStopping(brakeType::hold);
+    ladyB.stop();
+    Brain.Screen.clearLine();
+    Brain.Screen.print("lady brown loaded");
+    loaded = true;
+    scoring = false;
+  }
 }
 void ladyQuit(){
   ladyB.setStopping(brakeType::coast);
-  ladyB.spinTo(0, rotationUnits::deg, 2.5, velocityUnits::pct);
+  
   ladyB.stop();
+  wait(500, msec);
   ladyB.setStopping(brakeType::hold);
+  Brain.Screen.clearLine();
+  Brain.Screen.print("lady brown quit");
+  loaded = false;
 }
 
+void doinked(){
+  //mogoClamp.set(true);
+
+  if(Adown == false){
+    doink.set(doinker);
+    doinker = !doinker;
+  }
+  
+  Adown = true;
+}
+void undoink(){
+  Adown = false;
+}
 
 
 /*---------------------------------------------------------------------------*/
@@ -361,6 +458,7 @@ void pre_auton(void) {
   mogoClamp.set(false);
   drive.resetPosition();
   intake.resetPosition();
+  ladyB.resetPosition();
 
   inert.calibrate();
 
@@ -371,9 +469,10 @@ void pre_auton(void) {
   clamper.setLight(ledState::on);
   clamper.setLightPower(100, percent);
   colorSort.setLight(ledState::on);
-  colorSort.setLightPower(100, percent);
+  colorSort.setLightPower(50, percent);
 
   task controlTask(autoClamper::AutoClamping());
+  //task controlTask(colorSorter::colorSorting());
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
@@ -523,19 +622,21 @@ void autonomous(void){
 void usercontrol(void) {
   // User control code here, inside the loop
   while (1) {
-    Brain.Screen.print("auton");
-
+    
+    // colorSorter::allowRed();
+    // colorSorter::stopAllowBlue();
+    colorSorter::colorSorting();
   //drivetrain code
     leftDrive.spin(directionType::fwd, (Controller.Axis3.value() + (Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
     rightDrive.spin(directionType::fwd, (Controller.Axis3.value() - (Controller.Axis1.value()) ) * driveChanger, velocityUnits::pct);
     
   //intake code 
     //intake press
-    Controller.ButtonL1.pressed(intakeSpinFor);
-    Controller.ButtonL1.released(intakeStop);
-    //outtake press
-    Controller.ButtonL2.pressed(intakeSpinAga); // used to be DOWN
-    Controller.ButtonL2.released(intakeStop); // used to be DOWN
+    // Controller.ButtonL1.pressed(intakeSpinFor);
+    // Controller.ButtonL1.released(intakeStop);
+    // //outtake press
+    // Controller.ButtonL2.pressed(intakeSpinAga); // used to be DOWN
+    // Controller.ButtonL2.released(intakeStop); // used to be DOWN
     //clamp code
     //used to be L2
     //autoClamper::AutoClamping();
@@ -546,10 +647,11 @@ void usercontrol(void) {
     }
     //doink code
     Controller.ButtonR1.pressed(ladyUp);
-    Controller.ButtonY.pressed(ladyDown);
-    Controller.ButtonB.pressed(ladyQuit);
+    Controller.ButtonY.pressed(ladyQuit);
+    //Controller.ButtonB.pressed(ladyQuit);
     //avgTemp();
-
+    Controller.ButtonA.pressed(doinked);
+    Controller.ButtonA.released(undoink);
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
   }
