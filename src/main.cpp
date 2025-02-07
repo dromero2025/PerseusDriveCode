@@ -520,49 +520,108 @@ void autonomous(void){
     //EXPERIEMENTAL AUTON WITH AI-BASED PID
     // if(slotter == 0){
       
-      
-        intake.spinToPosition(240, rotationUnits::deg, true);
-        moving.moveTo(13);
-        turning.turnTo(90);
-        moving.moveTo(-20);
-        wait(200, msec);
-        moving.moveTo(-8);
-        //autoClamper::AutoClamping();
-        //mogoClamp.set(true);
+      // //SKILLS CODE
+      //   intake.spinToPosition(240, rotationUnits::deg, true);
+      //   moving.moveTo(13);
+      //   turning.turnTo(45);
+      //   turning.turnTo(90);
+      //   moving.moveTo(-20);
+      //   wait(200, msec);
+      //   moving.moveTo(-8);
+      //   wait(300,msec);
+      //   turning.turnTo(0);
+      //   wait(100, msec);
+      //   intake.spin(directionType::fwd);
+      //   moving.moveTo(29);
+      //   wait(400, msec);
+      //   turning.turnTo(-45);
+      //   turning.turnTo(-90);
+      //   wait(300, msec);
+      //   moving.moveTo(12);
+      //   wait(600, msec);
+      //   moving.moveTo(16);
+      //   wait(200, msec);
+      //   turning.turnTo(-135);
+      //   turning.turnTo(-180);
+      //   wait(100, msec);
+      //   moving.moveTo(21); 
+      //   moving.moveTo(21);  
+      //   wait(500, msec);
+      //   moving.moveTo(-20);
+      //   wait(-200, msec);
+      //   turning.turnTo(-145);
+      //   wait(100, msec);
+      //   moving.moveTo(24);
+      //   wait(300, msec);
+      //   //intake.stop();
 
-        wait(300,msec);
-        turning.turnTo(0);
-        wait(100, msec);
-        intake.spin(directionType::fwd);
-        moving.moveTo(28);
-        wait(400, msec);
-        turning.turnTo(-90);
-        wait(300, msec);
-        moving.moveTo(11);
-        wait(600, msec);
-        moving.moveTo(12);
-        wait(200, msec);
-        turning.turnTo(-180);
-        wait(100, msec);
-        moving.moveTo(22);
-        wait(1000, msec);
-        moving.moveTo(12);
-        wait(500, msec);
-        moving.moveTo(-10);
-        turning.turnTo(-90);
-        wait(100, msec);
-        moving.moveTo(24);
-        wait(300, msec);
-        moving.moveTo(-4);
-        turning.turnTo(0);
-        wait(100, msec);
+      //   moving.moveTo(-4);
+      //   turning.turnTo(-90);
+        
+      //   turning.turnTo(-45);
+      //   turning.turnTo(0);
+      //   turning.turnTo(45);
+      //   moving.moveTo(-5);
+      //   autoClamper::stopAutoClamping();
 
-        autoClamper::stopAutoClamping();
-        //mogoClamp.set(false);
-        autoClamper::startAutoClamping();
+      //   //left side
 
-        moving.moveTo(-4);
-        moving.moveTo(4);
+      //   moving.moveTo(5);
+      //   turning.turnTo(0);
+      //   turning.turnTo(-45);
+      //   turning.turnTo(-90);
+      //   autoClamper::startAutoClamping();
+      //   intake.resetPosition();
+      //   intake.spin(directionType::fwd);
+
+      //   moving.moveTo(-36); 
+      //   //moving.moveTo(-18);
+
+      //   turning.turnTo(-93);
+      //   moving.moveTo(-34); 
+      //   turning.turnTo(-95);
+      //   //moving.moveTo(-16); 
+      //   turning.turnTo(-99);
+      //   moving.moveTo(-17); 
+      //   wait(300, msec);
+      //   //right side
+      //   turning.turnTo(0);
+      //   wait(100, msec);
+      //   intake.spin(directionType::fwd);
+      //   moving.moveTo(26);
+      //   wait(400, msec);
+      //   turning.turnTo(45);
+      //   turning.turnTo(90);
+      //   wait(300, msec);
+      //   moving.moveTo(12);
+      //   wait(600, msec);
+      //   moving.moveTo(16);
+      //   wait(200, msec);
+      //   turning.turnTo(135);
+      //   turning.turnTo(180);
+      //   wait(100, msec);
+      //   moving.moveTo(21); 
+      //   moving.moveTo(21);  
+      //   wait(500, msec);
+      //   moving.moveTo(-20);
+      //   wait(-200, msec);
+      //   turning.turnTo(125);
+      //   wait(100, msec);
+      //   moving.moveTo(24);
+      //   wait(300, msec);
+      //   //intake.stop();
+
+      //   moving.moveTo(-4);
+      //   turning.turnTo(90);
+        
+      //   turning.turnTo(45);
+      //   turning.turnTo(0);
+      //   turning.turnTo(-45);
+      //   moving.moveTo(-8);
+      //   autoClamper::stopAutoClamping();
+
+
+
 
         
 
@@ -571,37 +630,30 @@ void autonomous(void){
         
       
     // } else if(slotter == 1){ //four ring side master auton
-    //   moving.moveTo(-13);
-    //   moving.moveTo(-13);
+    //THREE RING AUTON
+      moving.moveTo(-13);
+      moving.moveTo(-13);
       
-    //   mogoClamp.set(true);
-    //   moving.moveTo(-8);
-    //   //clamp goal and wait .25 sec then move back
-    //   //put preload onto goal
-    //   intake.spin(directionType::fwd);
-    //   wait(100, msec);
-    //   //turn to two ring stack
-    //   turning.turnTo(-90);
-    //   wait(25, msec);
-    //   //intake bottom of two ring stack
-    //   moving.moveTo(13);
-    //   moving.moveTo(11);
-    //   wait(200, msec);
-    //   moving.moveTo(-5);
-    //   turning.turnTo(-180);
-    //   moving.moveTo(13);
-    //   wait(250, msec);
-    //   turning.turnTo(-160);
-    //   moving.moveTo(-13);
-    // } else if(slotter == 10){
-    //     autoClamper::AutoClamping();
-    //     //moving.moveTo(-24);
-    //     // wait(3, sec);
-        
-    //     slotter = 100;
-    // }
-
-    
+      mogoClamp.set(true);
+      moving.moveTo(-8);
+      //clamp goal and wait .25 sec then move back
+      //put preload onto goal
+      intake.spin(directionType::fwd);
+      wait(100, msec);
+      //turn to two ring stack
+      turning.turnTo(-90);
+      wait(25, msec);
+      //intake bottom of two ring stack
+      moving.moveTo(13);
+      moving.moveTo(11);
+      wait(200, msec);
+      moving.moveTo(-5);
+      turning.turnTo(-180);
+      moving.moveTo(13);
+      wait(250, msec);
+      turning.turnTo(-160);
+      moving.moveTo(-13);
+ 
     
   }
 }
